@@ -1,0 +1,856 @@
+---
+title: "Coinoculation"
+author: "James C. Kosmopoulos"
+date: "`r format(Sys.Date())`"
+output: github_document
+editor_options: 
+  chunk_output_type: console
+---
+
+# Setup
+
+```{r Load packages, message=FALSE, warning=FALSE}
+# global options
+knitr::opts_chunk$set(echo = TRUE)
+
+# set working directory
+setwd("~/Documents/Research/co-inoculation/coinoculation")
+
+# load packages
+library("tidyverse") # includes ggplot2, dplyr, readr, stringr
+library("knitr") # produce the knitted doc
+library("emmeans") # for posthoc data analysis
+library("cowplot") # for combining  plots
+library("lme4") # linear mixed models
+library("car") # ANOVA function for linear mixed models
+library("gridExtra") # for arranging plots
+```
+
+
+# Summarize,organize, and save cleaned data
+
+```{r, echo = FALSE, warning = FALSE}
+tp_raw <- read_csv("all_data.csv")
+
+# filter function to remove outliers
+tp_all <- tp_raw %>% filter(!sample %in% c("InCtrl-2-r15", "733-17-r27", "717-6-r33")) %>% droplevels()
+# create shoot:root ratio
+tp_all$ratio <-tp_all$shoot_mass / tp_all$root_mass
+#re-arrange order of treatments to make some figure look nicer
+tp_all$treatment <- factor(tp_all$treatment, level = c("522", "702", "717", "733", "141", "522co141", "702co141", "717co141", "733co141", "InCtrl", "ExCtrl"))
+# add in type col (to compare internal, external, and treated)
+tp_all$type <- ifelse(tp_all$treatment == "InCtrl", "internal",
+                    ifelse(tp_all$treatment == "ExCtrl", "external","treated"))
+tp_all$type <- factor(tp_all$type, levels = c("internal","external","treated"))
+
+#create column designating treatment group
+tp_all$group <- ifelse(tp_all$treatment == "141", "Ensifer-only",
+                       ifelse(tp_all$treatment == "522" , "single",
+                              ifelse(tp_all$treatment == "702", "single",
+                                     ifelse(tp_all$treatment == "717", "single",
+                                            ifelse(tp_all$treatment == "733", "single",
+                                                   ifelse(tp_all$treatment == "InCtrl", "control",
+                                                          ifelse(tp_all$treatment == "ExCtrl", "control", "co-inoculated")))))))
+
+
+tp_all_sum <- tp_all %>%
+  group_by(type) %>%
+  summarize(count = n(),
+            # timepoint1 data
+            # height
+            mean_height1 = mean(height1, na.rm = TRUE), sd_height1 = sd(height1, na.rm = TRUE),
+            SE_height1 = sd_height1/sqrt(count),
+            # chlorophyll
+            mean_chloro1 = mean(chloro1, na.rm = TRUE), sd_chloro1 = sd(chloro1, na.rm = TRUE),
+            SE_chloro1 = sd_chloro1/sqrt(count),
+            # leaf
+            mean_leaf1 = mean(leaf1, na.rm = TRUE), sd_leaf1 = sd(leaf1, na.rm = TRUE),
+            SE_leaf1 = sd_leaf1/sqrt(count),
+
+            # timepoint2 data
+            # height
+            mean_height2 = mean(height2, na.rm = TRUE), sd_height2 = sd(height2, na.rm = TRUE),
+            SE_height2 = sd_height2/sqrt(count),
+            # chlorophyll
+            mean_chloro2 = mean(chloro2, na.rm = TRUE), sd_chloro2 = sd(chloro2, na.rm = TRUE),
+            SE_chloro2 = sd_chloro2/sqrt(count),
+            # leaf
+            mean_leaf2 = mean(leaf2, na.rm = TRUE), sd_leaf2 = sd(leaf2, na.rm = TRUE),
+            SE_leaf2 = sd_leaf2/sqrt(count),
+
+            # timepoint3 data
+            # height
+            mean_height3 = mean(height3, na.rm = TRUE), sd_height3 = sd(height3, na.rm = TRUE),
+            SE_height3 = sd_height3/sqrt(count),
+            # chlorophyll
+            mean_chloro3 = mean(chloro3, na.rm = TRUE), sd_chloro3 = sd(chloro3, na.rm = TRUE),
+            SE_chloro3 = sd_chloro3/sqrt(count),
+            # leaf
+            mean_leaf3 = mean(leaf3, na.rm = TRUE), sd_leaf3 = sd(leaf3, na.rm = TRUE),
+            SE_leaf3 = sd_leaf3/sqrt(count),
+            
+            # timepoint4 data
+            # height
+            mean_height4 = mean(height4, na.rm = TRUE), sd_height4 = sd(height4, na.rm = TRUE),
+            SE_height4 = sd_height4/sqrt(count),
+            # chlorophyll
+            mean_chloro4 = mean(chloro4, na.rm = TRUE), sd_chloro4 = sd(chloro4, na.rm = TRUE),
+            SE_chloro4 = sd_chloro4/sqrt(count),
+            # leaf
+            mean_leaf4 = mean(leaf4, na.rm = TRUE), sd_leaf4 = sd(leaf4, na.rm = TRUE),
+            SE_leaf4 = sd_leaf4/sqrt(count),
+            
+            # nodule dissection data
+            # mean nodule mass per tube
+            mean_nod_mass = mean(nod_mass, na.rm = TRUE),
+            sd_nod_mass = sd(nod_mass, na.rm = TRUE),
+            SE_nod_mass = sd_nod_mass/sqrt(count),
+            # total nodules per tube
+            mean_total_nod = mean(total_nod, na.rm = TRUE),
+            sd_total_nod = sd(total_nod, na.rm = TRUE),
+            SE_total_nod = sd_total_nod/sqrt(count),
+            
+            # biomass
+            # mean shoot biomass (mg)
+            mean_shoot_mass = mean(shoot_mass, na.rm = TRUE),
+            sd_shoot_mass = sd(shoot_mass, na.rm = TRUE),
+            SE_shoot_mass = sd_shoot_mass/sqrt(count),
+            # mean root biomass (mg)
+            mean_root_mass = mean(root_mass, na.rm = TRUE),
+            sd_root_mass = sd(root_mass, na.rm = TRUE),
+            SE_root_mass = sd_root_mass/sqrt(count),
+            # ratio
+            mean_ratio = mean(ratio, na.rm = TRUE),
+            sd_ratio = sd(ratio, na.rm = TRUE),
+            SE_ratio = sd_ratio/sqrt(count))
+            # when adding more data, make sure to delete one of the ')' above in (count)) and add a comma
+
+tp_all_long <- gather(tp_all, key = "trait", value = "measurement", height1:ratio)# use gather to stack the trait columns
+
+tp_long_sum <- tp_all_long %>%
+  group_by(type, trait) %>%
+  summarize(count = n(),
+            mean_trait = mean(measurement, na.rm = TRUE), sd_trait = sd(measurement, na.rm = TRUE),
+            SE_trait = sd_trait/sqrt(count))
+tp_long_sum$trait <- factor(tp_long_sum$trait, level = c("height1", "height2", "height3", "height4", "leaf1", "leaf2", "leaf3", "leaf4", "chloro1", "chloro2", "chloro3", "chloro4", "shoot_mass", "root_mass", "ratio", "nod_mass", "total_nod"))
+
+# this includes controls
+tp_long_sum_controlsplus <- tp_all_long %>%
+  group_by(treatment, trait) %>%
+  summarize(count = n(),
+            mean_trait = mean(measurement, na.rm = TRUE), sd_trait = sd(measurement, na.rm = TRUE),
+            SE_trait = sd_trait/sqrt(count))
+
+tp_treated <- tp_all %>% # for ANOVA
+  filter(type == "treated") %>%
+  droplevels(.)
+
+tp_treated_long <- gather(tp_treated, key = "trait", value = "measurement", height1:ratio)
+tp_treated_long$trait <- factor(tp_treated_long$trait, level = c("height1", "height2", "height3", "height4", "leaf1", "leaf2", "leaf3", "leaf4", "chloro1", "chloro2", "chloro3", "chloro4", "shoot_mass", "root_mass", "ratio", "nod_mass", "total_nod"))
+
+tp_treated_long_sum <- tp_treated_long %>%
+  group_by(treatment, trait) %>%
+  summarize(count = n(),
+            mean_trait = mean(measurement, na.rm = TRUE), sd_trait = sd(measurement, na.rm = TRUE),
+            SE_trait = sd_trait/sqrt(count))
+
+#groups for chlorophyll through time
+tp_treated_long_sum$chloro.time <- ifelse(tp_treated_long_sum$treatment == "141", "A", "B")
+tp_treated_long_sum$timepoint <- ifelse(tp_treated_long_sum$trait == "height1", "1",
+                    ifelse(tp_treated_long_sum$trait == "leaf1", "1",
+                      ifelse(tp_treated_long_sum$trait == "chloro1", "1",
+                        ifelse(tp_treated_long_sum$trait == "height2", "2",
+                          ifelse(tp_treated_long_sum$trait == "leaf2", "2",
+                            ifelse(tp_treated_long_sum$trait == "chloro2", "2",
+                              ifelse(tp_treated_long_sum$trait == "height3", "3",
+                                ifelse(tp_treated_long_sum$trait == "leaf3", "3",
+                                  ifelse(tp_treated_long_sum$trait == "chloro3", "3", "4")))))))))
+
+#groups for chlorophyll through time
+tp_long_sum_controlsplus$chloro.time <- ifelse(tp_long_sum_controlsplus$treatment == "141", "A", "B")
+tp_long_sum_controlsplus$timepoint <- ifelse(tp_long_sum_controlsplus$trait == "height1", "1",
+                    ifelse(tp_long_sum_controlsplus$trait == "leaf1", "1",
+                      ifelse(tp_long_sum_controlsplus$trait == "chloro1", "1",
+                        ifelse(tp_long_sum_controlsplus$trait == "height2", "2",
+                          ifelse(tp_long_sum_controlsplus$trait == "leaf2", "2",
+                            ifelse(tp_long_sum_controlsplus$trait == "chloro2", "2",
+                              ifelse(tp_long_sum_controlsplus$trait == "height3", "3",
+                                ifelse(tp_long_sum_controlsplus$trait == "leaf3", "3",
+                                  ifelse(tp_long_sum_controlsplus$trait == "chloro3", "3", "4")))))))))
+```
+
+
+
+# Plot data: treatment types
+
+```{r, echo = FALSE, warning = FALSE}
+# timepoint1
+# height
+ggplot(tp_all_sum, aes(x=type, y=mean_height1)) +
+  geom_point(size = 5) +
+  geom_errorbar(aes(ymin = mean_height1 - SE_height1, ymax = mean_height1 + SE_height1),
+                width = 0.1) +
+  xlab("Treatment type") +
+  ylab("Timepoint 1: Average height (cm)") +
+  theme_bw()
+# chlorophyll
+ggplot(tp_all_sum, aes(x=type, y=mean_chloro1)) +
+  geom_point(size = 5) +
+  geom_errorbar(aes(ymin = mean_chloro1 - SE_chloro1, ymax = mean_chloro1 + SE_chloro1),
+                width = 0.1) +
+  xlab("Treatment type") +
+  ylab("Timepoint 1: Chlorophyll (SPAD)") +
+  theme_bw()
+# leaf
+ggplot(tp_all_sum, aes(x=type, y=mean_leaf1)) +
+  geom_point(size = 5) +
+  geom_errorbar(aes(ymin = mean_leaf1 - SE_leaf1, ymax = mean_leaf1 + SE_leaf1),
+                width = 0.1) +
+  xlab("Treatment type") +
+  ylab("Timepoint 1: Leaf number") +
+  theme_bw()
+            
+# timepoint2
+# height
+ggplot(tp_all_sum, aes(x=type, y=mean_height2)) +
+  geom_point(size = 5) +
+  geom_errorbar(aes(ymin = mean_height2 - SE_height2, ymax = mean_height2 + SE_height2),
+                width = 0.1) +
+  xlab("Treatment type") +
+  ylab("Timepoint 2: Average height (cm)") +
+  theme_bw()
+# chlorophyll
+ggplot(tp_all_sum, aes(x=type, y=mean_chloro2)) +
+  geom_point(size = 5) +
+  geom_errorbar(aes(ymin = mean_chloro2 - SE_chloro2, ymax = mean_chloro2 + SE_chloro2),
+                width = 0.1) +
+  xlab("Treatment type") +
+  ylab("Timepoint 2: Chlorophyll (SPAD)") +
+  theme_bw()
+# leaf
+ggplot(tp_all_sum, aes(x=type, y=mean_leaf2)) +
+  geom_point(size = 5) +
+  geom_errorbar(aes(ymin = mean_leaf2 - SE_leaf2, ymax = mean_leaf2 + SE_leaf2),
+                width = 0.1) +
+  xlab("Treatment type") +
+  ylab("Timepoint 2: Leaf number") +
+  theme_bw()
+            
+# timepoint3
+# height
+ggplot(tp_all_sum, aes(x=type, y=mean_height3)) +
+  geom_point(size = 5) +
+  geom_errorbar(aes(ymin = mean_height3 - SE_height3, ymax = mean_height3 + SE_height3),
+                width = 0.1) +
+  xlab("Treatment type") +
+  ylab("Timepoint 3: Average height (cm)") +
+  theme_bw()
+# chlorophyll
+ggplot(tp_all_sum, aes(x=type, y=mean_chloro3)) +
+  geom_point(size = 5) +
+  geom_errorbar(aes(ymin = mean_chloro3 - SE_chloro3, ymax = mean_chloro3 + SE_chloro3),
+                width = 0.1) +
+  xlab("Treatment type") +
+  ylab("Timepoint 3: Chlorophyll (SPAD)") +
+  theme_bw()
+# leaf
+ggplot(tp_all_sum, aes(x=type, y=mean_leaf3)) +
+  geom_point(size = 5) +
+  geom_errorbar(aes(ymin = mean_leaf3 - SE_leaf3, ymax = mean_leaf3 + SE_leaf3),
+                width = 0.1) +
+  xlab("Treatment type") +
+  ylab("Timepoint 3: Leaf number") +
+  theme_bw()
+
+# timepoint4
+# height
+ggplot(tp_all_sum, aes(x=type, y=mean_height4)) +
+  geom_point(size = 5) +
+  geom_errorbar(aes(ymin = mean_height4 - SE_height4, ymax = mean_height4 + SE_height4),
+                width = 0.1) +
+  xlab("Treatment type") +
+  ylab("Timepoint 4: Average height (cm)") +
+  theme_bw()
+# chlorophyll
+ggplot(tp_all_sum, aes(x=type, y=mean_chloro4)) +
+  geom_point(size = 5) +
+  geom_errorbar(aes(ymin = mean_chloro4 - SE_chloro4, ymax = mean_chloro4 + SE_chloro4),
+                width = 0.1) +
+  xlab("Treatment type") +
+  ylab("Timepoint 4: Chlorophyll (SPAD)") +
+  theme_bw()
+# leaf
+ggplot(tp_all_sum, aes(x=type, y=mean_leaf4)) +
+  geom_point(size = 5) +
+  geom_errorbar(aes(ymin = mean_leaf4 - SE_leaf4, ymax = mean_leaf4 + SE_leaf4),
+                width = 0.1) +
+  xlab("Treatment type") +
+  ylab("Timepoint 4: Leaf number") +
+  theme_bw()
+
+# nodule dissection data
+# mean nodule mass per tube
+ggplot(tp_all_sum, aes(x=type, y=mean_nod_mass)) +
+  geom_point(size = 5) +
+  geom_errorbar(aes(ymin = mean_nod_mass - SE_nod_mass, ymax = mean_nod_mass + SE_nod_mass),
+                width = 0.1) +
+  xlab("Treatment type") +
+  ylab("Average mass per nodule (g)") +
+  theme_bw()
+# total nodules per tube
+ggplot(tp_all_sum, aes(x=type, y=mean_total_nod)) +
+  geom_point(size = 5) +
+  geom_errorbar(aes(ymin = mean_total_nod - SE_total_nod, ymax = mean_total_nod + SE_total_nod),
+                width = 0.1) +
+  xlab("Treatment type") +
+  ylab("Average amount of nodules") +
+  theme_bw()
+
+# biomass data
+# mean shoot biomass (mg)
+ggplot(tp_all_sum, aes(x=type, y=mean_shoot_mass)) +
+  geom_point(size = 5) +
+  geom_errorbar(aes(ymin = mean_shoot_mass - SE_shoot_mass, ymax = mean_shoot_mass + SE_shoot_mass),
+                width = 0.1) +
+  xlab("Treatment type") +
+  ylab("Average shoot biomass (mg)") +
+  theme_bw()
+# mean root biomass (mg)
+ggplot(tp_all_sum, aes(x=type, y=mean_root_mass)) +
+  geom_point(size = 5) +
+  geom_errorbar(aes(ymin = mean_root_mass - SE_root_mass, ymax = mean_root_mass + SE_root_mass),
+                width = 0.1) +
+  xlab("Treatment type") +
+  ylab("Average root biomass (mg)") +
+  theme_bw()
+```
+
+
+# Plot data: treatment types (combined)
+
+```{r, echo = FALSE, warning = FALSE}
+# Boxplots (shows outliers): mean meas. over treatment TYPE
+ggplot(tp_all_long, aes(x=type, y=measurement)) + 
+  geom_boxplot() +
+  facet_wrap(~ trait, scales = "free") +
+  xlab("Treatment type") +
+  ylab("Measurement") +
+  theme_bw()
+
+# Interval plots: mean meas. over treatment TYPE
+# all data
+intervalplot_treat_type_all <- ggplot(tp_long_sum, aes(x=type, y=mean_trait)) + 
+  geom_point(size = 5) +
+  geom_errorbar(aes(ymin = mean_trait - SE_trait, ymax = mean_trait + SE_trait),
+                width = 0.1) +
+  facet_wrap(~ trait, scales = "free", nrow = 5) +
+  xlab("Treatment type") +
+  ylab("Mean measurement") +
+  theme_bw()
+plot(intervalplot_treat_type_all)
+save_plot("./figures/all_data_mean_meas_over_treatment_type_intervalplot.png", intervalplot_treat_type_all,
+          ncol = 4,
+          nrow = 5)
+```
+
+
+# Plot data: treatments
+
+```{r, echo = FALSE, warning = FALSE}
+# Individual plots
+# timepoint 4
+# height
+ggplot(tp_treated_long_sum %>% filter(trait == "height4"), aes(x=treatment, y=mean_trait)) + 
+  geom_point(size = 5) +
+  geom_errorbar(aes(ymin = mean_trait - SE_trait, ymax = mean_trait + SE_trait),
+                width = 0.1) +
+  xlab("Treatment") +
+  ylab("Height (cm)") +
+  theme_bw()
+# leaf
+ggplot(tp_treated_long_sum %>% filter(trait == "leaf4"), aes(x=treatment, y=mean_trait)) + 
+  geom_point(size = 5) +
+  geom_errorbar(aes(ymin = mean_trait - SE_trait, ymax = mean_trait + SE_trait),
+                width = 0.1) +
+  xlab("Treatment") +
+  ylab("Number of leaves") +
+  theme_bw()
+# chloro
+ggplot(tp_treated_long_sum %>% filter(trait == "chloro4"), aes(x=treatment, y=mean_trait)) + 
+  geom_point(size = 5) +
+  geom_errorbar(aes(ymin = mean_trait - SE_trait, ymax = mean_trait + SE_trait),
+                width = 0.1) +
+  xlab("Treatment") +
+  ylab("Chlorophyll content (SPAD)") +
+  theme_bw()
+
+# Include controls
+
+# Individual plots
+# timepoint 4
+# height
+ggplot(tp_long_sum_controlsplus %>% filter(trait == "height4"), aes(x=treatment, y=mean_trait)) + 
+  geom_point(size = 5) +
+  geom_errorbar(aes(ymin = mean_trait - SE_trait, ymax = mean_trait + SE_trait),
+                width = 0.1) +
+  xlab("Treatment") +
+  ylab("Height (cm)") +
+  theme_bw()
+# leaf
+ggplot(tp_long_sum_controlsplus %>% filter(trait == "leaf4"), aes(x=treatment, y=mean_trait)) + 
+  geom_point(size = 5) +
+  geom_errorbar(aes(ymin = mean_trait - SE_trait, ymax = mean_trait + SE_trait),
+                width = 0.1) +
+  xlab("Treatment") +
+  ylab("Number of leaves") +
+  theme_bw()
+# chloro
+ggplot(tp_long_sum_controlsplus %>% filter(trait == "chloro4"), aes(x=treatment, y=mean_trait)) + 
+  geom_point(size = 5) +
+  geom_errorbar(aes(ymin = mean_trait - SE_trait, ymax = mean_trait + SE_trait),
+                width = 0.1) +
+  xlab("Treatment") +
+  ylab("Chlorophyll content (SPAD)") +
+  theme_bw()
+```
+
+
+# Plot data: treatments (combined)
+
+```{r, echo = FALSE, warning = FALSE}
+# Interval plots, mean meas. over treatment
+plot_treat_all <- ggplot(tp_treated_long_sum, aes(x=treatment, y=mean_trait)) + 
+  geom_point(size = 5) +
+  geom_errorbar(aes(ymin = mean_trait - SE_trait, ymax = mean_trait + SE_trait),
+                width = 0.1) +
+  facet_wrap(~ trait, scales = "free", nrow = 5) +
+  xlab("Treatment") +
+  ylab("Mean measurement") +
+  theme_bw()
+plot(plot_treat_all)
+save_plot("./figures/all_data_mean_meas_over_treatment_intervalplot.png", plot_treat_all,
+          ncol = 4,
+          nrow = 4,
+          base_aspect_ratio = 1.7
+          )
+
+# height4 + leaf4 + chloro4
+plot_h4l4c4 <- ggplot(tp_treated_long_sum %>% filter(trait %in% c("height4", "leaf4", "chloro4")), aes(x=treatment, y=mean_trait)) + 
+  geom_point(size = 5) +
+  geom_errorbar(aes(ymin = mean_trait - SE_trait, ymax = mean_trait + SE_trait),
+                width = 0.1) +
+  facet_wrap(~ trait, scales = "free", nrow = 1) +
+  xlab("Treatment") +
+  ylab("Mean measurement") +
+  theme_bw()
+plot(plot_h4l4c4)
+save_plot("./figures/height4_leaf4_chloro4_intervalplot.png", plot_h4l4c4,
+          ncol = 3,
+          nrow = 1,
+          )
+
+# height4 + leaf4 + chloro4 + nodule + biomass
+plot_h4l4c4_nod_biomass <- ggplot(tp_treated_long_sum %>% filter(trait %in% c("height4", "leaf4", "chloro4", "shoot_mass", "root_mass", "ratio", "nod_mass", "total_nod")), aes(x=treatment, y=mean_trait)) + 
+  geom_point(size = 5) +
+  geom_errorbar(aes(ymin = mean_trait - SE_trait, ymax = mean_trait + SE_trait),
+                width = 0.1) +
+  facet_wrap(~ trait, scales = "free", nrow = 3) +
+  xlab("Treatment") +
+  ylab("Mean measurement") +
+  theme_bw()
+plot(plot_h4l4c4_nod_biomass)
+save_plot("./figures/height4_leaf4_chloro4_intervalplot.png", plot_h4l4c4_nod_biomass,
+          ncol = 3,
+          nrow = 3,
+          base_aspect_ratio = 1.7)
+
+# chloro1 + chloro4
+plot_chloro1_chloro4 <- ggplot(tp_treated_long_sum %>% filter(trait %in% c("chloro1", "chloro4")), aes(x=treatment, y=mean_trait)) + 
+  geom_point(size = 5) +
+  geom_errorbar(aes(ymin = mean_trait - SE_trait, ymax = mean_trait + SE_trait),
+                width = 0.1) +
+  facet_wrap(~ trait, scales = "free", nrow = 1) +
+  xlab("Treatment") +
+  ylab("Mean chlorophyll content (SPAD)") +
+  theme_bw()
+save_plot("./figures/chloro1_chloro4_intervalplot.png", plot_chloro1_chloro4,
+          ncol = 2,
+          nrow = 1,
+          base_aspect_ratio = 1.7)
+
+# Include controls
+
+plot_treat_all_cplus <- ggplot(tp_long_sum_controlsplus, aes(x=treatment, y=mean_trait)) + 
+  geom_point(size = 5) +
+  geom_errorbar(aes(ymin = mean_trait - SE_trait, ymax = mean_trait + SE_trait),
+                width = 0.1) +
+  facet_wrap(~ trait, scales = "free", nrow = 5) +
+  xlab("Treatment") +
+  ylab("Mean measurement") +
+  theme_bw()
+plot(plot_treat_all_cplus)
+save_plot("./figures/all_data_controlsplus_mean_meas_over_treatment_intervalplot.png", plot_treat_all_cplus,
+          ncol = 4,
+          nrow = 4,
+          base_aspect_ratio = 1.9
+          )
+
+# height4 + leaf4 + chloro4
+plot_h4l4c4_cplus <- ggplot(tp_long_sum_controlsplus %>% filter(trait %in% c("height4", "leaf4", "chloro4")), aes(x=treatment, y=mean_trait)) + 
+  geom_point(size = 5) +
+  geom_errorbar(aes(ymin = mean_trait - SE_trait, ymax = mean_trait + SE_trait),
+                width = 0.1) +
+  facet_wrap(~ trait, scales = "free", nrow = 1) +
+  xlab("Treatment") +
+  ylab("Mean measurement") +
+  theme_bw()
+plot(plot_h4l4c4_cplus)
+save_plot("./figures/height4_leaf4_chloro4_controlsplus_intervalplot.png", plot_h4l4c4_cplus,
+          ncol = 3,
+          nrow = 1,
+          base_aspect_ratio = 1.9
+          )
+
+# height4 + leaf4 + chloro4 + nodule + biomass
+plot_h4l4c4_nod_biomass_cplus <- ggplot(tp_long_sum_controlsplus %>% filter(trait %in% c("height4", "leaf4", "chloro4", "shoot_mass", "root_mass", "ratio", "nod_mass", "total_nod")), aes(x=treatment, y=mean_trait)) + 
+  geom_point(size = 5) +
+  geom_errorbar(aes(ymin = mean_trait - SE_trait, ymax = mean_trait + SE_trait),
+                width = 0.1) +
+  facet_wrap(~ trait, scales = "free", nrow = 3) +
+  xlab("Treatment") +
+  ylab("Mean measurement") +
+  theme_bw()
+plot(plot_h4l4c4_nod_biomass_cplus)
+save_plot("./figures/height4_leaf4_chloro4_controlsplus_intervalplot.png", plot_h4l4c4_nod_biomass_cplus,
+          ncol = 3,
+          nrow = 3,
+          base_aspect_ratio = 1.9)
+
+# chloro1 + chloro4
+plot_chloro1_chloro4_controls <- ggplot(tp_long_sum_controlsplus %>% filter(trait %in% c("chloro1", "chloro4")), aes(x=treatment, y=mean_trait)) + 
+  geom_point(size = 5) +
+  geom_errorbar(aes(ymin = mean_trait - SE_trait, ymax = mean_trait + SE_trait),
+                width = 0.1) +
+  facet_wrap(~ trait, scales = "free", nrow = 1) +
+  xlab("Treatment") +
+  ylab("Mean chlorophyll content (SPAD)") +
+  theme_bw()
+plot(plot_chloro1_chloro4_controls)
+save_plot("./figures/chloro1_chloro4_controls_intervalplot.png", plot_chloro1_chloro4_controls,
+          ncol = 2,
+          nrow = 1,
+          base_aspect_ratio = 1.9)
+
+#chloro1 +chloro4 portrait
+plot_chloro1_chloro4_controls_portrait <- ggplot(tp_long_sum_controlsplus %>% filter(trait %in% c("chloro1", "chloro4")), aes(x=treatment, y=mean_trait)) + 
+  geom_point(size = 5) +
+  geom_errorbar(aes(ymin = mean_trait - SE_trait, ymax = mean_trait + SE_trait),
+                width = 0.1) +
+  facet_wrap(~ trait, scales = "free", nrow = 2) +
+  xlab("Treatment") +
+  ylab("Mean chlorophyll content (SPAD)") +
+  theme_bw()
+plot(plot_chloro1_chloro4_controls_portrait)
+
+# chloro1 + chloro4 colplot
+colplot_chloro1_chloro4_controls <- ggplot(tp_long_sum_controlsplus %>% filter(trait %in% c("chloro1", "chloro4")), aes(x=treatment, y=mean_trait)) + 
+  geom_col() +
+  geom_signif(comparisons = list(c("141", "InCtrl"), c("141", "702")), 
+              map_signif_level=TRUE) +
+  geom_errorbar(aes(ymin = mean_trait - SE_trait, ymax = mean_trait + SE_trait),
+                width = 0.1) +
+  facet_wrap(~ trait, scales = "free", nrow = 1) +
+  xlab("Treatment") +
+  ylab("Mean chlorophyll content (SPAD)") +
+  theme_bw()
+plot(colplot_chloro1_chloro4_controls)
+save_plot("./figures/chloro1_chloro4_controls_colplot.png", colplot_chloro1_chloro4_controls,
+          ncol = 2,
+          nrow = 1,
+          base_aspect_ratio = 1.9)
+```
+# Plot: shoot biomass, all treatments
+```{r}
+fig.shoot_mass <- ggplot(tp_treated_long_sum %>% filter(trait == "shoot_mass"), aes(x=treatment, y=mean_trait)) + 
+  geom_errorbar(aes(ymin = mean_trait - SE_trait, ymax = mean_trait + SE_trait),
+                width = 0.1) +
+  geom_point(size = 5) +
+  xlab("Treatment") +
+  ylab("Shoot biomass (mg)") +
+  ggtitle("Average shoot biomass at week 4") +
+  theme_minimal_hgrid() +
+  theme(plot.title = element_text(hjust = 0.5), legend.position = "none")
+plot(fig.shoot_mass)
+save_plot("./figures/shoot_mass.png", fig.shoot_mass, base_asp = 2.25)
+```
+
+# Plot: nodule count, all treatments
+```{r}
+fig.total_nod <- ggplot(tp_treated_long_sum %>% filter(trait == "total_nod"), aes(x=treatment, y=mean_trait)) + 
+  geom_errorbar(aes(ymin = mean_trait - SE_trait, ymax = mean_trait + SE_trait),
+                width = 0.1) +
+  geom_point(size = 5) +
+  xlab("Treatment") +
+  ylab("Nodule count") +
+  ggtitle("Average nodule count per plant at week 4") +
+  theme_minimal_hgrid() +
+  theme(plot.title = element_text(hjust = 0.5), legend.position = "none")
+plot(fig.total_nod)
+save_plot("./figures/nodule_count.png", fig.total_nod, base_asp = 2.25)
+```
+
+# Plot: chloro through time
+```{r}
+# create means for comparison
+table.nonensifer <- tp_treated_long_sum %>% filter(lmm1 %in% c("non-Ensifer"), na.rm = TRUE)
+table.nonensifer.chloro1 <- mean.nonensifer %>% filter(trait %in% c("chloro1"), na.rm = TRUE)
+mean.nonensifer.chloro1 <- mean(table.nonensifer.chloro1$mean_trait)
+mean.nonensifer.chloro1
+table.nonensifer <- tp_treated_long_sum %>% filter(lmm1 %in% c("non-Ensifer"), na.rm = TRUE)
+table.nonensifer.chloro2 <- mean.nonensifer %>% filter(trait %in% c("chloro2"), na.rm = TRUE)
+mean.nonensifer.chloro2 <- mean(table.nonensifer.chloro2$mean_trait)
+mean.nonensifer.chloro2
+table.nonensifer <- tp_treated_long_sum %>% filter(lmm1 %in% c("non-Ensifer"), na.rm = TRUE)
+table.nonensifer.chloro3 <- mean.nonensifer %>% filter(trait %in% c("chloro3"), na.rm = TRUE)
+mean.nonensifer.chloro3 <- mean(table.nonensifer.chloro3$mean_trait)
+mean.nonensifer.chloro3
+table.nonensifer <- tp_treated_long_sum %>% filter(lmm1 %in% c("non-Ensifer"), na.rm = TRUE)
+table.nonensifer.chloro4 <- mean.nonensifer %>% filter(trait %in% c("chloro4"), na.rm = TRUE)
+mean.nonensifer.chloro4 <- mean(table.nonensifer.chloro4$mean_trait)
+mean.nonensifer.chloro4
+table.141 <- tp_treated_long_sum %>% filter(lmm1 %in% c("141"), na.rm = TRUE)
+table.141.chloro1 <- table.141 %>% filter(trait %in% c("chloro1"), na.rm = TRUE)
+mean.141.chloro1 <- mean(table.141.chloro1$mean_trait)
+mean.141.chloro1
+table.141 <- tp_treated_long_sum %>% filter(lmm1 %in% c("141"), na.rm = TRUE)
+table.141.chloro2 <- table.141 %>% filter(trait %in% c("chloro2"), na.rm = TRUE)
+mean.141.chloro2 <- mean(table.141.chloro2$mean_trait)
+mean.141.chloro2
+table.141 <- tp_treated_long_sum %>% filter(lmm1 %in% c("141"), na.rm = TRUE)
+table.141.chloro3 <- table.141 %>% filter(trait %in% c("chloro3"), na.rm = TRUE)
+mean.141.chloro3 <- mean(table.141.chloro3$mean_trait)
+mean.141.chloro3
+table.141 <- tp_treated_long_sum %>% filter(lmm1 %in% c("141"), na.rm = TRUE)
+table.141.chloro4 <- table.141 %>% filter(trait %in% c("chloro4"), na.rm = TRUE)
+mean.141.chloro4 <- mean(table.141.chloro4$mean_trait)
+mean.141.chloro4
+table.coinoculation <- tp_treated_long_sum %>% filter(lmm1 %in% c("co-inoculation"), na.rm = TRUE)
+table.coinoculation.chloro1 <- table.coinoculation %>% filter(trait %in% c("chloro1"), na.rm = TRUE)
+mean.coinoculation.chloro1 <- mean(table.coinoculation.chloro1$mean_trait)
+mean.coinoculation.chloro1
+table.coinoculation <- tp_treated_long_sum %>% filter(lmm1 %in% c("co-inoculation"), na.rm = TRUE)
+table.coinoculation.chloro2 <- table.coinoculation %>% filter(trait %in% c("chloro2"), na.rm = TRUE)
+mean.coinoculation.chloro2 <- mean(table.coinoculation.chloro2$mean_trait)
+mean.coinoculation.chloro2
+table.coinoculation <- tp_treated_long_sum %>% filter(lmm1 %in% c("co-inoculation"), na.rm = TRUE)
+table.coinoculation.chloro3 <- table.coinoculation %>% filter(trait %in% c("chloro3"), na.rm = TRUE)
+mean.coinoculation.chloro3 <- mean(table.coinoculation.chloro3$mean_trait)
+mean.coinoculation.chloro3
+table.coinoculation <- tp_treated_long_sum %>% filter(lmm1 %in% c("co-inoculation"), na.rm = TRUE)
+table.coinoculation.chloro4 <- table.coinoculation %>% filter(trait %in% c("chloro4"), na.rm = TRUE)
+mean.coinoculation.chloro4 <- mean(table.coinoculation.chloro4$mean_trait)
+mean.coinoculation.chloro4
+chloro.means = c(mean.nonensifer.chloro1, mean.nonensifer.chloro2, mean.nonensifer.chloro3, mean.nonensifer.chloro4, mean.141.chloro1, mean.141.chloro2, mean.141.chloro3, mean.141.chloro4, mean.coinoculation.chloro1, mean.coinoculation.chloro2, mean.coinoculation.chloro3, mean.coinoculation.chloro4)
+chloro.time.2.table <- as.data.frame(x = chloro.means)
+chloro.means.lmm1 <- c("non-Ensifer", "non-Ensifer", "non-Ensifer", "non-Ensifer", "Ensifer", "Ensifer", "Ensifer", "Ensifer", "co-inoculation", "co-inoculation", "co-inoculation", "co-inoculation")
+chloro.time.2.table$group <- chloro.means.lmm1
+chloro.timepoints <- c(1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4)
+chloro.time.2.table$timepoint <- chloro.timepoints
+chloro.time.2.table$group <- factor(chloro.time.2.table$group, levels = c("non-Ensifer", "co-inoculation", "Ensifer"))
+
+# Now plot it
+fig.chloro.thru.time.2 <- ggplot(chloro.time.2.table, aes(x=timepoint, y=chloro.means)) + 
+  geom_point(size = 5, aes(color = group)) +
+  geom_line(aes(group = group, color = group)) +
+  scale_color_manual(values = c("#CC79A7", "#D55E00", "#0072B2", "#F0E442", "#009E73", "#56B4E9", "#E69F00", "#000000")) +
+  scale_shape_manual(values = c(4, 4, 4, 4, 4, 4)) +
+  annotate("text", x = 1, y = 39.3, 
+              label = "c",
+              fontface = 1, size = 5) +
+  annotate("text", x = 1, y = 36, 
+              label = "ab",
+              fontface = 1, size = 5) +
+  annotate("text", x = 1, y = 31.65, 
+              label = "a",
+              fontface = 1, size = 5) +
+  xlab("Weeks after inoculation") +
+  ylab("Chlorophyll content (SPAD)") +
+  ggtitle("Average chlorophyll content through time") +
+  theme_minimal_hgrid() +
+  theme(plot.title = element_text(hjust = 0.5), legend.position = "right")
+plot(fig.chloro.thru.time.2)
+save_plot("./figures/chloro_thru_time2.png", fig.chloro.thru.time.2, base_asp = 2.25)
+```
+# Control t-tests
+```{r}
+tp_control <- tp_all %>% filter(treatment %in% c("InCtrl", "ExCtrl")) %>% droplevels()
+t.test(tp_control$shoot_mass ~ tp_control$treatment) # p=0.6460 InCtrl and ExCtrl not sig diff.
+t.test(tp_control$root_mass ~ tp_control$treatment) # p=0.4964 InCtrl and ExCtrl not sig diff.
+t.test(tp_control$chloro4 ~ tp_control$treatment) # p= 06061 InCtrl and ExCtrl not sig diff.
+t.test(tp_control$leaf4 ~ tp_control$treatment) # p=0.3871  InCtrl and ExCtrl not sig diff.
+t.test(tp_control$height4 ~ tp_control$treatment) # p=0.1903 InCtrl and ExCtrl not sig diff.
+```
+# Lmm with controls to non-ensifer (direct effects)... tests direct effects of non-Ensifer on traits compared to controls
+```{r}
+tp_direct <- tp_all %>% filter(treatment %in% c("InCtrl", "ExCtrl", "522", "702", "717", "733")) %>% droplevels()
+tp_direct$lmm <- ifelse(tp_direct$treatment == "InCtrl" | 
+                        tp_direct$treatment == "ExCtrl", "control", "non-Ensifer")
+
+lmm.ctrl.shoot_mass <- lmer(shoot_mass ~  lmm + (1|rack), data = tp_direct)
+summary(lmm.ctrl.shoot_mass)
+(anova_lmm.ctrl.shoot_mass <- Anova(lmm.ctrl.shoot_mass, type =2)) # p=0.6913
+
+lmm.ctrl.root_mass <- lmer(root_mass ~  lmm + (1|rack), data = tp_direct)
+summary(lmm.ctrl.root_mass)
+(anova_lmm.ctrl.root_mass <- Anova(lmm.ctrl.root_mass, type =2)) # p=0.9800
+
+#don't include total nod or nod mass because none of the plants in these data had nodules
+#lmm.ctrl.total_nod <- lmer(total_nod ~  lmm + (1|rack), data = tp_direct)
+#summary(lmm.ctrl.total_nod)
+#(anova_lmm.ctrl.total_nod <- Anova(lmm.ctrl.total_nod, type =2))
+
+#lmm.ctrl.nod_mass <- lmer(nod_mass ~  lmm + (1|rack), data = tp_direct)
+#summary(lmm.ctrl.nod_mass)
+#(anova_lmm.ctrl.nod_mass <- Anova(lmm.ctrl.nod_mass, type =2))
+
+lmm.ctrl.height4 <- lmer(height4 ~  lmm + (1|rack), data = tp_direct)
+summary(lmm.ctrl.height4)
+(anova_lmm.ctrl.height4 <- Anova(lmm.ctrl.height4, type =2)) # p=0.4519
+
+lmm.ctrl.chloro4 <- lmer(chloro4 ~  lmm + (1|rack), data = tp_direct)
+summary(lmm.ctrl.chloro4)
+(anova_lmm.ctrl.chloro4 <- Anova(lmm.ctrl.chloro4, type =2)) # p=0.8651
+
+lmm.ctrl.leaf4 <- lmer(leaf4 ~  lmm + (1|rack), data = tp_direct)
+summary(lmm.ctrl.leaf4)
+(anova_lmm.ctrl.leaf4 <- Anova(lmm.ctrl.leaf4, type =2)) # p=0.9345
+```
+# Lmm with Ensifer vs co-inoculated, fdr djustment
+```{r}
+tp_non.ens.rm <- tp_all %>% filter(treatment %in% c("141", "522co141", "702co141", "717co141", "733co141")) %>% droplevels()
+tp_non.ens.rm$lmm <- ifelse(tp_non.ens.rm$treatment == "522co141" |
+                              tp_non.ens.rm$treatment == "702co141" |
+                              tp_non.ens.rm$treatment == "717co141" |
+                              tp_non.ens.rm$treatment == "733co141", "co-inoculated", "Ensifer")
+
+lmm.non.ens.rm.shoot_mass <- lmer(shoot_mass ~ lmm + (1|rack), data = tp_non.ens.rm)
+summary(lmm.non.ens.rm.shoot_mass)
+(anova_lmm.non.ens.rm.shoot_mass <- Anova(lmm.non.ens.rm.shoot_mass, type = 2))
+lmm.non.ens.rm.shoot_mass.emms <- emmeans(lmm.non.ens.rm.shoot_mass, pairwise ~ lmm)
+lmm.non.ens.rm.shoot_mass.emms.sum <- summary(lmm.non.ens.rm.shoot_mass.emms, infer = c(TRUE,TRUE), adjust = "fdr") # p=0.101, not sig
+
+lmm.non.ens.rm.total_nod <- lmer(total_nod ~ lmm + (1|rack), data = tp_non.ens.rm)
+summary(lmm.non.ens.rm.total_nod)
+(anova_lmm.non.ens.rm.total_nod <- Anova(lmm.non.ens.rm.total_nod, type = 2))
+lmm.non.ens.rm.total_nod.emms <- emmeans(lmm.non.ens.rm.total_nod, pairwise ~ lmm)
+lmm.non.ens.rm.total_nod.emms.sum <- summary(lmm.non.ens.rm.total_nod.emms, infer = c(TRUE,TRUE), adjust = "fdr") # p=.047, slightly sig!
+
+lmm.non.ens.rm.root_mass <- lmer(root_mass ~ lmm + (1|rack), data = tp_non.ens.rm)
+summary(lmm.non.ens.rm.root_mass)
+(anova_lmm.non.ens.rm.root_mass <- Anova(lmm.non.ens.rm.root_mass, type = 2))
+lmm.non.ens.rm.root_mass.emms <- emmeans(lmm.non.ens.rm.root_mass, pairwise ~ lmm)
+lmm.non.ens.rm.root_mass.emms.sum <- summary(lmm.non.ens.rm.root_mass.emms, infer = c(TRUE,TRUE), adjust = "fdr") # p=0.187 not sig
+
+lmm.non.ens.rm.chloro4 <- lmer(chloro4 ~ lmm + (1|rack), data = tp_non.ens.rm)
+summary(lmm.non.ens.rm.chloro4)
+(anova_lmm.non.ens.rm.chloro4 <- Anova(lmm.non.ens.rm.chloro4, type = 2))
+lmm.non.ens.rm.chloro4.emms <- emmeans(lmm.non.ens.rm.chloro4, pairwise ~ lmm)
+lmm.non.ens.rm.chloro4.emms.sum <- summary(lmm.non.ens.rm.chloro4.emms, infer = c(TRUE,TRUE), adjust = "fdr") # p=0.239 not sig
+
+lmm.non.ens.rm.leaf4 <- lmer(leaf4 ~ lmm + (1|rack), data = tp_non.ens.rm)
+summary(lmm.non.ens.rm.leaf4)
+(anova_lmm.non.ens.rm.leaf4 <- Anova(lmm.non.ens.rm.leaf4, type = 2))
+lmm.non.ens.rm.leaf4.emms <- emmeans(lmm.non.ens.rm.leaf4, pairwise ~ lmm)
+lmm.non.ens.rm.leaf4.emms.sum <- summary(lmm.non.ens.rm.leaf4.emms, infer = c(TRUE,TRUE), adjust = "fdr") # p=0.110 not sig
+
+lmm.non.ens.rm.height4 <- lmer(height4 ~ lmm + (1|rack), data = tp_non.ens.rm)
+summary(lmm.non.ens.rm.height4)
+(anova_lmm.non.ens.rm.height4 <- Anova(lmm.non.ens.rm.height4, type = 2))
+lmm.non.ens.rm.height4.emms <- emmeans(lmm.non.ens.rm.height4, pairwise ~ lmm)
+lmm.non.ens.rm.height4.emms.sum <- summary(lmm.non.ens.rm.height4.emms, infer = c(TRUE,TRUE), adjust = "fdr") # p=0.559 not sig
+
+lmm.non.ens.rm.nod_mass <- lmer(nod_mass ~ lmm + (1|rack), data = tp_non.ens.rm)
+summary(lmm.non.ens.rm.nod_mass)
+(anova_lmm.non.ens.rm.nod_mass <- Anova(lmm.non.ens.rm.nod_mass, type = 2))
+lmm.non.ens.rm.nod_mass.emms <- emmeans(lmm.non.ens.rm.nod_mass, pairwise ~ lmm)
+lmm.non.ens.rm.nod_mass.emms.sum <- summary(lmm.non.ens.rm.nod_mass.emms, infer = c(TRUE,TRUE), adjust = "fdr") # p=0.118 not sig
+```
+
+
+# Plot: nodule count lmm Ensifer vs co-inoculated, fdr djustment
+```{r}
+fig.total_nod.lmm3 <- ggplot(tp_treated_long_sum_nErm %>% filter(trait == "total_nod"), aes(x=treatment, y=mean_trait)) + 
+  geom_errorbar(aes(ymin = mean_trait - SE_trait, ymax = mean_trait + SE_trait), width = 0.1) +
+  geom_point(size = 5, color = "black") +
+  geom_segment(x = 1.8, y = 27, xend = 5.2, yend = 27) +
+  geom_segment(x = 0.8, y = 27, xend = 1.2, yend = 27) +
+  geom_segment(x = 1.08, y = 26.3, xend = 3.42, yend = 26.3, linetype = 3) +
+  annotate("text", x = 1, y = 26.3, 
+              label = "A",
+              fontface = 1, size = 6) +
+  annotate("text", x = 3.5, y = 26.3, 
+              label = "B",
+              fontface = 1, size = 6) +
+  annotate("text", x = 2.25, y = 25.9, 
+              label = "p = 0.047",
+              fontface = 1, size = 3.5) +
+  xlab("Treatment") +
+  ylab("Nodule count") +
+  ggtitle("Average nodule count per plant at week 4") +
+  theme_minimal_hgrid() +
+  theme(plot.title = element_text(hjust = 0.5, size = 22), legend.position = "none")
+plot(fig.total_nod.lmm3)
+save_plot("./figures/nodule_count_lmm3.png", fig.total_nod.lmm3, base_asp = 2.25)
+
+#boxplot
+(boxplot.total_nod.nErm <- ggplot(tp_treated %>% filter(treatment == c("141", "522co141", "702co141", "717co141", "733co141")), aes(x=treatment, y=total_nod)) +
+  geom_boxplot() +
+  xlab("Treatment") +
+  ylab("Nodule count") +
+  #ggtitle("Average nodule count per plant at week 4") +
+  theme_minimal_hgrid() +
+  theme(plot.title = element_text(hjust = 0.5), legend.position = "none")
+  )
+plot(boxplot.total_nod.nErm)
+save_plot("./figures/boxplot_nodule_count_nErm.png", boxplot.total_nod.nErm, base_asp = 2)
+
+#boxplot, treatment group
+(boxplot.total_nod.group <- ggplot(tp_treated %>% filter(group == c("single", "co-inoculated", "Ensifer-only")), aes(x=group, y=total_nod)) +
+  geom_boxplot() +
+  xlab("Inoculation group") +
+  ylab("Nodule count") +
+  #ggtitle("Average nodule count per plant at week 4") +
+  theme_minimal_hgrid() +
+  theme(plot.title = element_text(hjust = 0.5), legend.position = "none")
+  )
+plot(boxplot.total_nod.group)
+save_plot("./figures/boxplot_nodule_count_group.png", boxplot.total_nod.group, base_asp = 2)
+
+```
+# Plot: shoot mass lmm Ensifer vs co-inoculated, fdr djustment
+```{r}
+fig.shoot_mass.lmm3 <- ggplot(tp_treated_long_sum_nErm %>% filter(trait == "shoot_mass"), aes(x=treatment, y=mean_trait)) + 
+  geom_errorbar(aes(ymin = mean_trait - SE_trait, ymax = mean_trait + SE_trait), width = 0.1) +
+  geom_point(size = 5, color = "#D81B60") +
+  geom_segment(x = 1.8, y = 140, xend = 5.2, yend = 140) +
+  geom_segment(x = 0.8, y = 140, xend = 1.2, yend = 140) +
+  geom_segment(x = 1.08, y = 133, xend = 3.42, yend = 133, linetype = 3) +
+  annotate("text", x = 1, y = 133, 
+              label = "A",
+              fontface = 1, size = 6) +
+  annotate("text", x = 3.5, y = 133, 
+              label = "A",
+              fontface = 1, size = 6) +
+  annotate("text", x = 2.25, y = 129, 
+              label = "p = 0.118",
+              fontface = 1, size = 3.5) +
+  xlab("Treatment") +
+  ylab("Shoot biomass (mg)") +
+  ggtitle("Average shoot biomass at week 4") +
+  theme_minimal_hgrid() +
+  theme(plot.title = element_text(hjust = 0.5, size = 22), legend.position = "none")
+plot(fig.shoot_mass.lmm3)
+save_plot("./figures/shoot_mass_lmm3.png", fig.shoot_mass.lmm3, base_asp = 2.25)
+```
+
+
