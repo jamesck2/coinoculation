@@ -20,7 +20,6 @@ setwd("~/Documents/Research/co-inoculation/coinoculation")
 library("tidyverse") # includes ggplot2, dplyr, readr, stringr
 library("knitr") # produce the knitted doc
 library("emmeans") # for posthoc data analysis
-library("cowplot") # for combining  plots
 library("lme4") # linear mixed models
 library("car") # ANOVA function for linear mixed models
 library("gridExtra") # for arranging plots
@@ -743,7 +742,7 @@ lmm.non.ens.rm.total_nod <- lmer(total_nod ~ lmm + (1|rack), data = tp_non.ens.r
 summary(lmm.non.ens.rm.total_nod)
 (anova_lmm.non.ens.rm.total_nod <- Anova(lmm.non.ens.rm.total_nod, type = 2))
 lmm.non.ens.rm.total_nod.emms <- emmeans(lmm.non.ens.rm.total_nod, pairwise ~ lmm)
-lmm.non.ens.rm.total_nod.emms.sum <- summary(lmm.non.ens.rm.total_nod.emms, infer = c(TRUE,TRUE), adjust = "fdr") # p=.047, slightly sig!
+lmm.non.ens.rm.total_nod.emms.sum <- summary(lmm.non.ens.rm.total_nod.emms, infer = c(TRUE,TRUE), adjust = "fdr") # p=.047, sig!
 
 lmm.non.ens.rm.root_mass <- lmer(root_mass ~ lmm + (1|rack), data = tp_non.ens.rm)
 summary(lmm.non.ens.rm.root_mass)
