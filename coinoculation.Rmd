@@ -23,6 +23,7 @@ library("emmeans") # for posthoc data analysis
 library("lme4") # linear mixed models
 library("car") # ANOVA function for linear mixed models
 library("gridExtra") # for arranging plots
+library("cowplot")
 ```
 
 
@@ -328,7 +329,7 @@ ggplot(tp_all_sum, aes(x=type, y=mean_root_mass)) +
 # Plot data: treatment types (combined)
 
 ```{r, echo = FALSE, warning = FALSE}
-# Boxplots (shows outliers): mean meas. over treatment TYPE
+# Boxplots: mean meas. over treatment TYPE
 ggplot(tp_all_long, aes(x=type, y=measurement)) + 
   geom_boxplot() +
   facet_wrap(~ trait, scales = "free") +
@@ -743,6 +744,7 @@ summary(lmm.non.ens.rm.total_nod)
 (anova_lmm.non.ens.rm.total_nod <- Anova(lmm.non.ens.rm.total_nod, type = 2))
 lmm.non.ens.rm.total_nod.emms <- emmeans(lmm.non.ens.rm.total_nod, pairwise ~ lmm)
 lmm.non.ens.rm.total_nod.emms.sum <- summary(lmm.non.ens.rm.total_nod.emms, infer = c(TRUE,TRUE), adjust = "fdr") # p=.047, sig!
+plot(lmm.non.ens.rm.total_nod)
 
 lmm.non.ens.rm.root_mass <- lmer(root_mass ~ lmm + (1|rack), data = tp_non.ens.rm)
 summary(lmm.non.ens.rm.root_mass)
@@ -775,34 +777,111 @@ lmm.non.ens.rm.nod_mass.emms <- emmeans(lmm.non.ens.rm.nod_mass, pairwise ~ lmm)
 lmm.non.ens.rm.nod_mass.emms.sum <- summary(lmm.non.ens.rm.nod_mass.emms, infer = c(TRUE,TRUE), adjust = "fdr") # p=0.118 not sig
 ```
 
-
-# Plot: nodule count lmm Ensifer vs co-inoculated, fdr djustment
+# Lmm with all data, pairwise contrasts for every treatment/control, fdr djustment
 ```{r}
-fig.total_nod.lmm3 <- ggplot(tp_treated_long_sum_nErm %>% filter(trait == "total_nod"), aes(x=treatment, y=mean_trait)) + 
-  geom_errorbar(aes(ymin = mean_trait - SE_trait, ymax = mean_trait + SE_trait), width = 0.1) +
-  geom_point(size = 5, color = "black") +
-  geom_segment(x = 1.8, y = 27, xend = 5.2, yend = 27) +
-  geom_segment(x = 0.8, y = 27, xend = 1.2, yend = 27) +
-  geom_segment(x = 1.08, y = 26.3, xend = 3.42, yend = 26.3, linetype = 3) +
-  annotate("text", x = 1, y = 26.3, 
-              label = "A",
-              fontface = 1, size = 6) +
-  annotate("text", x = 3.5, y = 26.3, 
-              label = "B",
-              fontface = 1, size = 6) +
-  annotate("text", x = 2.25, y = 25.9, 
-              label = "p = 0.047",
-              fontface = 1, size = 3.5) +
-  xlab("Treatment") +
-  ylab("Nodule count") +
-  ggtitle("Average nodule count per plant at week 4") +
-  theme_minimal_hgrid() +
-  theme(plot.title = element_text(hjust = 0.5, size = 22), legend.position = "none")
-plot(fig.total_nod.lmm3)
-save_plot("./figures/nodule_count_lmm3.png", fig.total_nod.lmm3, base_asp = 2.25)
+lmm.all.shoot_mass <- lmer(shoot_mass ~ treatment + (1|rack), data = tp_all)
+summary(lmm.all.shoot_mass)
+(anova_lmm.all.shoot_mass <- Anova(lmm.all.shoot_mass, type = 2))
+lmm.all.shoot_mass.emms <- emmeans(lmm.all.shoot_mass, pairwise ~ treatment)
+lmm.all.shoot_mass.emms.sum <- summary(lmm.all.shoot_mass.emms, infer = c(TRUE,TRUE), adjust = "fdr") # 717-141 and 733-141 sig!
 
-#boxplot
-(boxplot.total_nod.nErm <- ggplot(tp_treated %>% filter(treatment == c("141", "522co141", "702co141", "717co141", "733co141")), aes(x=treatment, y=total_nod)) +
+lmm.all.total_nod <- lmer(total_nod ~ treatment + (1|rack), data = tp_all)
+summary(lmm.all.total_nod)
+(anova_lmm.all.total_nod <- Anova(lmm.all.total_nod, type = 2))
+lmm.all.total_nod.emms <- emmeans(lmm.all.total_nod, pairwise ~ treatment)
+lmm.all.total_nod.emms.sum <- summary(lmm.all.total_nod.emms, infer = c(TRUE,TRUE), adjust = "fdr") # 717-141 and 733-141 sig!
+plot(lmm.all.total_nod)
+
+lmm.all.root_mass <- lmer(root_mass ~ treatment + (1|rack), data = tp_all)
+summary(lmm.all.root_mass)
+(anova_lmm.all.root_mass <- Anova(lmm.all.root_mass, type = 2))
+lmm.all.root_mass.emms <- emmeans(lmm.all.root_mass, pairwise ~ treatment)
+lmm.all.root_mass.emms.sum <- summary(lmm.all.root_mass.emms, infer = c(TRUE,TRUE), adjust = "fdr") # not sig
+
+lmm.all.chloro4 <- lmer(chloro4 ~ treatment + (1|rack), data = tp_all)
+summary(lmm.all.chloro4)
+(anova_lmm.all.chloro4 <- Anova(lmm.all.chloro4, type = 2))
+lmm.all.chloro4.emms <- emmeans(lmm.all.chloro4, pairwise ~ treatment)
+lmm.all.chloro4.emms.sum <- summary(lmm.all.chloro4.emms, infer = c(TRUE,TRUE), adjust = "fdr") # not sig
+
+lmm.all.leaf4 <- lmer(leaf4 ~ treatment + (1|rack), data = tp_all)
+summary(lmm.all.leaf4)
+(anova_lmm.all.leaf4 <- Anova(lmm.all.leaf4, type = 2))
+lmm.all.leaf4.emms <- emmeans(lmm.all.leaf4, pairwise ~ treatment)
+lmm.all.leaf4.emms.sum <- summary(lmm.all.leaf4.emms, infer = c(TRUE,TRUE), adjust = "fdr") # 717-141 and 733-141 sig!
+
+lmm.all.height4 <- lmer(height4 ~ treatment + (1|rack), data = tp_all)
+summary(lmm.all.height4)
+(anova_lmm.all.height4 <- Anova(lmm.all.height4, type = 2))
+lmm.all.height4.emms <- emmeans(lmm.all.height4, pairwise ~ treatment)
+lmm.all.height4.emms.sum <- summary(lmm.all.height4.emms, infer = c(TRUE,TRUE), adjust = "fdr") # not sig
+
+lmm.all.nod_mass <- lmer(nod_mass ~ treatment + (1|rack), data = tp_all)
+summary(lmm.all.nod_mass)
+(anova_lmm.all.nod_mass <- Anova(lmm.all.nod_mass, type = 2))
+lmm.all.nod_mass.emms <- emmeans(lmm.all.nod_mass, pairwise ~ treatment)
+lmm.all.nod_mass.emms.sum <- summary(lmm.all.nod_mass.emms, infer = c(TRUE,TRUE), adjust = "fdr") # not sig
+```
+
+# Plot: shoot mass
+```{r}
+# All treatments and controls
+(boxplot.shoot_mass.all <- ggplot(tp_all , aes(x=treatment, y=shoot_mass)) +
+  geom_boxplot() +
+  xlab("Treatment") +
+  ylab("Shoot mass (g)") +
+  #ggtitle("Average nodule count per plant at week 4") +
+  theme_minimal_hgrid() +
+  theme(plot.title = element_text(hjust = 0.5), legend.position = "none")
+  )
+plot(boxplot.shoot_mass.all)
+save_plot("./figures/boxplot_shoot_mass_all.png", boxplot.shoot_mass.all, base_asp = 3)
+
+# 141 and co-inoculated only
+(boxplot.shoot_mass <- ggplot(tp_all %>% filter(treatment == c("141", "522co141", "702co141", "717co141", "733co141")), aes(x=treatment, y=shoot_mass)) +
+  geom_boxplot() +
+  xlab("Treatment") +
+  ylab("Shoot mass (g)") +
+  #ggtitle("Average nodule count per plant at week 4") +
+  theme_minimal_hgrid() +
+  theme(plot.title = element_text(hjust = 0.5), legend.position = "none")
+  )
+plot(boxplot.shoot_mass.all)
+save_plot("./figures/boxplot_shoot_mass.png", boxplot.shoot_mass, base_asp = 2)
+```
+
+# Plot: leaf number
+```{r}
+# All treatments and controls
+(boxplot.leaf.all <- ggplot(tp_all, aes(x=treatment, y=leaf4)) +
+  geom_boxplot() +
+  xlab("Treatment") +
+  ylab("Leaf count") +
+  #ggtitle("Average nodule count per plant at week 4") +
+  theme_minimal_hgrid() +
+  theme(plot.title = element_text(hjust = 0.5), legend.position = "none")
+  )
+plot(boxplot.leaf.all)
+save_plot("./figures/boxplot_leaf_all.png", boxplot.leaf.all, base_asp = 3)
+
+# 141 and co-inoculated only
+(boxplot.leaf <- ggplot(tp_all %>% filter(treatment == c("141", "522co141", "702co141", "717co141", "733co141")), aes(x=treatment, y=leaf4)) +
+  geom_boxplot() +
+  xlab("Treatment") +
+  ylab("Leaf count") +
+  #ggtitle("Average nodule count per plant at week 4") +
+  theme_minimal_hgrid() +
+  theme(plot.title = element_text(hjust = 0.5), legend.position = "none")
+  )
+plot(boxplot.leaf)
+save_plot("./figures/boxplot_leaf.png", boxplot.leaf, base_asp = 2)
+```
+
+
+# Plot: nodule count
+```{r}
+# boxplot, 141 and co-inoculated treatments only
+(boxplot.total_nod <- ggplot(tp_all %>% filter(treatment == c("141", "522co141", "702co141", "717co141", "733co141")), aes(x=treatment, y=total_nod)) +
   geom_boxplot() +
   xlab("Treatment") +
   ylab("Nodule count") +
@@ -811,10 +890,22 @@ save_plot("./figures/nodule_count_lmm3.png", fig.total_nod.lmm3, base_asp = 2.25
   theme(plot.title = element_text(hjust = 0.5), legend.position = "none")
   )
 plot(boxplot.total_nod.nErm)
-save_plot("./figures/boxplot_nodule_count_nErm.png", boxplot.total_nod.nErm, base_asp = 2)
+save_plot("./figures/boxplot_nodule_count.png", boxplot.total_nod, base_asp = 2)
+
+# boxplot, all treatments and controls
+(boxplot.total_nod.all <- ggplot(tp_all, aes(x=treatment, y=total_nod)) +
+  geom_boxplot() +
+  xlab("Treatment") +
+  ylab("Nodule count") +
+  #ggtitle("Average nodule count per plant at week 4") +
+  theme_minimal_hgrid() +
+  theme(plot.title = element_text(hjust = 0.5), legend.position = "none")
+  )
+plot(boxplot.total_nod.all)
+save_plot("./figures/boxplot_nodule_count_all.png", boxplot.total_nod.all, base_asp = 3)
 
 #boxplot, treatment group
-(boxplot.total_nod.group <- ggplot(tp_treated %>% filter(group == c("single", "co-inoculated", "Ensifer-only")), aes(x=group, y=total_nod)) +
+(boxplot.total_nod.group <- ggplot(tp_all %>% filter(group == c("single", "co-inoculated", "Ensifer-only")), aes(x=group, y=total_nod)) +
   geom_boxplot() +
   xlab("Inoculation group") +
   ylab("Nodule count") +
@@ -826,30 +917,6 @@ plot(boxplot.total_nod.group)
 save_plot("./figures/boxplot_nodule_count_group.png", boxplot.total_nod.group, base_asp = 2)
 
 ```
-# Plot: shoot mass lmm Ensifer vs co-inoculated, fdr djustment
-```{r}
-fig.shoot_mass.lmm3 <- ggplot(tp_treated_long_sum_nErm %>% filter(trait == "shoot_mass"), aes(x=treatment, y=mean_trait)) + 
-  geom_errorbar(aes(ymin = mean_trait - SE_trait, ymax = mean_trait + SE_trait), width = 0.1) +
-  geom_point(size = 5, color = "#D81B60") +
-  geom_segment(x = 1.8, y = 140, xend = 5.2, yend = 140) +
-  geom_segment(x = 0.8, y = 140, xend = 1.2, yend = 140) +
-  geom_segment(x = 1.08, y = 133, xend = 3.42, yend = 133, linetype = 3) +
-  annotate("text", x = 1, y = 133, 
-              label = "A",
-              fontface = 1, size = 6) +
-  annotate("text", x = 3.5, y = 133, 
-              label = "A",
-              fontface = 1, size = 6) +
-  annotate("text", x = 2.25, y = 129, 
-              label = "p = 0.118",
-              fontface = 1, size = 3.5) +
-  xlab("Treatment") +
-  ylab("Shoot biomass (mg)") +
-  ggtitle("Average shoot biomass at week 4") +
-  theme_minimal_hgrid() +
-  theme(plot.title = element_text(hjust = 0.5, size = 22), legend.position = "none")
-plot(fig.shoot_mass.lmm3)
-save_plot("./figures/shoot_mass_lmm3.png", fig.shoot_mass.lmm3, base_asp = 2.25)
-```
+
 
 
