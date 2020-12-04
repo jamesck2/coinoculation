@@ -243,9 +243,26 @@ write.csv(emmeans_all, file="./emmeans/emmeans_all.csv")
 
 # Stacked plot: shoot mass and total nod
 ```{r}
-library(grid)
+# Create modified individual plots to be stacked
+(stack.shoot_mass.all <- ggplot(tp_all %>% mutate(treatment = fct_relevel(treatment, "InCtrl", "ExCtrl", "522", "717A", "702A", "733B", "141", "522 + 141", "717A + 141", "702A + 141", "733B + 141")), aes(x=treatment, y=shoot_mass)) +
+  geom_boxplot() +
+  ylab("Shoot mass (g)") +
+  theme_minimal_hgrid() +
+  theme(axis.text.y = element_text(size=8)) +
+  labs(x = NULL) + 
+  guides(x = "none")
+)
+
+(stack.total_nod.all <- ggplot(tp_all %>% mutate(treatment = fct_relevel(treatment, "InCtrl", "ExCtrl", "522", "717A", "702A", "733B", "141", "522 + 141", "717A + 141", "702A + 141", "733B + 141")), aes(x=treatment, y=total_nod)) +
+  geom_boxplot() +
+  xlab("Inoculum") +
+  ylab("Number of nodules") +
+  theme_minimal_hgrid() +
+  theme(axis.text.y = element_text(size = 8))
+  )  
+
 grid.newpage()
-grid.draw(rbind(ggplotGrob(boxplot.shoot_mass.all), ggplotGrob(boxplot.total_nod.all), size = "last"))
+grid.draw(rbind(ggplotGrob(stack.shoot_mass.all), ggplotGrob(stack.total_nod.all), size = "last"))
 ```
 
 
@@ -255,7 +272,7 @@ grid.draw(rbind(ggplotGrob(boxplot.shoot_mass.all), ggplotGrob(boxplot.total_nod
 (boxplot.shoot_mass.all <- ggplot(tp_all %>%
   mutate(treatment = fct_relevel(treatment, "InCtrl", "ExCtrl", "522", "717A", "702A", "733B", "141", "522 + 141", "717A + 141", "702A + 141", "733B + 141")), aes(x=treatment, y=shoot_mass)) +
   geom_boxplot() +
-  xlab("Treatment") +
+  xlab("Inoculum") +
   ylab("Shoot mass (g)") +
   #ggtitle("Average nodule count per plant at week 4") +
   theme_minimal_hgrid() +
@@ -267,7 +284,7 @@ save_plot("./figures/boxplot_shoot_mass_all.png", boxplot.shoot_mass.all, base_a
 # 141 and co-inoculated only
 (boxplot.shoot_mass <- ggplot(tp_all %>% filter(treatment == c("141", "522 + 141", "717A + 141", "702A + 141", "733B + 141")), aes(x=treatment, y=shoot_mass)) +
   geom_boxplot() +
-  xlab("Treatment") +
+  xlab("Inoculum") +
   ylab("Shoot mass (g)") +
   #ggtitle("Average nodule count per plant at week 4") +
   theme_minimal_hgrid() +
@@ -282,7 +299,7 @@ save_plot("./figures/boxplot_shoot_mass.png", boxplot.shoot_mass, base_asp = 2)
 # All treatments and controls
 (boxplot.root_mass.all <- ggplot(tp_all %>% mutate(treatment = fct_relevel(treatment, "InCtrl", "ExCtrl", "522", "717A", "702A", "733B", "141", "522 + 141", "717A + 141", "702A + 141", "733B + 141")), aes(x=treatment, y=root_mass)) +
   geom_boxplot() +
-  xlab("Treatment") +
+  xlab("Inoculum") +
   ylab("Root mass (g)") +
   #ggtitle("Average nodule count per plant at week 4") +
   theme_minimal_hgrid() +
@@ -294,7 +311,7 @@ save_plot("./figures/boxplot_root_mass_all.png", boxplot.root_mass.all, base_asp
 # 141 and co-inoculated only
 (boxplot.root_mass <- ggplot(tp_all %>% filter(treatment == c("141", "522 + 141", "702A + 141", "717A + 141", "733B + 141")), aes(x=treatment, y=root_mass)) +
   geom_boxplot() +
-  xlab("Treatment") +
+  xlab("Inoculum") +
   ylab("Root mass (g)") +
   #ggtitle("Average nodule count per plant at week 4") +
   theme_minimal_hgrid() +
@@ -309,7 +326,7 @@ save_plot("./figures/boxplot_root_mass.png", boxplot.root_mass, base_asp = 2)
 # All treatments and controls
 (boxplot.ratio.all <- ggplot(tp_all %>% mutate(treatment = fct_relevel(treatment, "InCtrl", "ExCtrl", "522", "717A", "702A", "733B", "141", "522 + 141", "717A + 141", "702A + 141", "733B + 141")), aes(x=treatment, y=ratio)) +
   geom_boxplot() +
-  xlab("Treatment") +
+  xlab("Inoculum") +
   ylab("Shoot:root mass ratio") +
   #ggtitle("Average nodule count per plant at week 4") +
   theme_minimal_hgrid() +
@@ -321,7 +338,7 @@ save_plot("./figures/boxplot_ratio_all.png", boxplot.ratio.all, base_asp = 3)
 # 141 and co-inoculated only
 (boxplot.ratio <- ggplot(tp_all %>% filter(treatment == c("141", "522 + 141", "702A + 141", "717A + 141", "733B + 141")), aes(x=treatment, y=ratio)) +
   geom_boxplot() +
-  xlab("Treatment") +
+  xlab("Inoculum") +
   ylab("Shoot:root mass ratio") +
   #ggtitle("Average nodule count per plant at week 4") +
   theme_minimal_hgrid() +
@@ -336,7 +353,7 @@ save_plot("./figures/boxplot_ratio.png", boxplot.ratio, base_asp = 2)
 # All treatments and controls
 (boxplot.leaf.all <- ggplot(tp_all %>% mutate(treatment = fct_relevel(treatment, "InCtrl", "ExCtrl", "522", "717A", "702A", "733B", "141", "522 + 141", "717A + 141", "702A + 141", "733B + 141")), aes(x=treatment, y=leaf4)) +
   geom_boxplot() +
-  xlab("Treatment") +
+  xlab("Inoculum") +
   ylab("Leaf count") +
   #ggtitle("Average nodule count per plant at week 4") +
   theme_minimal_hgrid() +
@@ -348,7 +365,7 @@ save_plot("./figures/boxplot_leaf_all.png", boxplot.leaf.all, base_asp = 3)
 # 141 and co-inoculated only
 (boxplot.leaf <- ggplot(tp_all %>% filter(treatment == c("141", "522 + 141", "702A + 141", "717A + 141", "733B + 141")), aes(x=treatment, y=leaf4)) +
   geom_boxplot() +
-  xlab("Treatment") +
+  xlab("Inoculum") +
   ylab("Leaf count") +
   #ggtitle("Average nodule count per plant at week 4") +
   theme_minimal_hgrid() +
@@ -364,7 +381,7 @@ save_plot("./figures/boxplot_leaf.png", boxplot.leaf, base_asp = 2)
 # All treatments and controls
 (boxplot.height4.all <- ggplot(tp_all %>% mutate(treatment = fct_relevel(treatment, "InCtrl", "ExCtrl", "522", "717A", "702A", "733B", "141", "522 + 141", "717A + 141", "702A + 141", "733B + 141")), aes(x=treatment, y=height4)) +
   geom_boxplot() +
-  xlab("Treatment") +
+  xlab("Inoculum") +
   ylab("Shoot height (cm)") +
   #ggtitle("Average nodule count per plant at week 4") +
   theme_minimal_hgrid() +
@@ -376,7 +393,7 @@ save_plot("./figures/boxplot_height4_all.png", boxplot.height4.all, base_asp = 3
 # 141 and co-inoculated only
 (boxplot.height4 <- ggplot(tp_all %>% filter(treatment == c("141", "522 + 141", "702A + 141", "717A + 141", "733B + 141")), aes(x=treatment, y=height4)) +
   geom_boxplot() +
-  xlab("Treatment") +
+  xlab("Inoculum") +
   ylab("Shoot height (cm)") +
   #ggtitle("Average nodule count per plant at week 4") +
   theme_minimal_hgrid() +
@@ -391,7 +408,7 @@ save_plot("./figures/boxplot_height4.png", boxplot.height4, base_asp = 2)
 # All treatments and controls
 (boxplot.chloro4.all <- ggplot(tp_all %>% mutate(treatment = fct_relevel(treatment, "InCtrl", "ExCtrl", "522", "717A", "702A", "733B", "141", "522 + 141", "717A + 141", "702A + 141", "733B + 141")), aes(x=treatment, y=chloro4)) +
   geom_boxplot() +
-  xlab("Treatment") +
+  xlab("Inoculum") +
   ylab("Chlorophyll content (SPAD)") +
   #ggtitle("Average nodule count per plant at week 4") +
   theme_minimal_hgrid() +
@@ -403,7 +420,7 @@ save_plot("./figures/boxplot_chloro4_all.png", boxplot.chloro4.all, base_asp = 3
 # 141 and co-inoculated only
 (boxplot.chloro4 <- ggplot(tp_all %>% filter(treatment == c("141", "522 + 141", "702A + 141", "717A + 141", "733B + 141")), aes(x=treatment, y=chloro4)) +
   geom_boxplot() +
-  xlab("Treatment") +
+  xlab("Inoculum") +
   ylab("Chlorophyll content (SPAD)") +
   #ggtitle("Average nodule count per plant at week 4") +
   theme_minimal_hgrid() +
@@ -418,7 +435,7 @@ save_plot("./figures/boxplot_chloro4.png", boxplot.chloro4, base_asp = 2)
 # boxplot, all treatments and controls
 (boxplot.total_nod.all <- ggplot(tp_all %>% mutate(treatment = fct_relevel(treatment, "InCtrl", "ExCtrl", "522", "717A", "702A", "733B", "141", "522 + 141", "717A + 141", "702A + 141", "733B + 141")), aes(x=treatment, y=total_nod)) +
   geom_boxplot() +
-  xlab("Treatment") +
+  xlab("Inoculum") +
   ylab("Nodule count") +
   #ggtitle("Average nodule count per plant at week 4") +
   theme_minimal_hgrid() +
@@ -430,7 +447,7 @@ save_plot("./figures/boxplot_nodule_count_all.png", boxplot.total_nod.all, base_
 # boxplot, 141 and co-inoculated treatments only
 (boxplot.total_nod <- ggplot(tp_all %>% filter(treatment == c("141", "522 + 141", "702A + 141", "717A + 141", "733B + 141")), aes(x=treatment, y=total_nod)) +
   geom_boxplot() +
-  xlab("Treatment") +
+  xlab("Inoculum") +
   ylab("Nodule count") +
   #ggtitle("Average nodule count per plant at week 4") +
   theme_minimal_hgrid() +
@@ -445,7 +462,7 @@ save_plot("./figures/boxplot_nodule_count.png", boxplot.total_nod, base_asp = 2)
 # boxplot, all treatments and controls
 (boxplot.nod_mass.all <- ggplot(tp_all %>% mutate(treatment = fct_relevel(treatment, "InCtrl", "ExCtrl", "522", "717A", "702A", "733B", "141", "522 + 141", "717A + 141", "702A + 141", "733B + 141")), aes(x=treatment, y=(nod_mass)*1000)) +
   geom_boxplot() +
-  xlab("Treatment") +
+  xlab("Inoculum") +
   ylab("Average nodule mass (mg)") +
   #ggtitle("Average nodule count per plant at week 4") +
   theme_minimal_hgrid() +
@@ -457,7 +474,7 @@ save_plot("./figures/boxplot_nod_mass_all.png", boxplot.nod_mass.all, base_asp =
 # boxplot, 141 and co-inoculated treatments only
 (boxplot.nod_mass <- ggplot(tp_all %>% filter(treatment == c("141", "522 + 141", "702A + 141", "717A + 141", "733B + 141")), aes(x=treatment, y=(nod_mass)*1000)) +
   geom_boxplot() +
-  xlab("Treatment") +
+  xlab("Inoculum") +
   ylab("Average nodule mass (mg)") +
   #ggtitle("Average nodule count per plant at week 4") +
   theme_minimal_hgrid() +
