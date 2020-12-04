@@ -32,26 +32,11 @@ library("cowplot")
 ```{r, echo = FALSE, warning = FALSE}
 tp_raw <- read_csv("all_data.csv")
 
-# filter function to remove outliers
-tp_all <- tp_raw %>% filter(!sample %in% c("InCtrl-2-r15", "733-17-r27", "717-6-r33")) %>% droplevels()
-# create shoot:root ratio
-tp_all$ratio <-tp_all$shoot_mass / tp_all$root_mass
-#re-arrange order of treatments to make some figure look nicer
-tp_all$treatment <- factor(tp_all$treatment, level = c("522", "702", "717", "733", "141", "522co141", "702co141", "717co141", "733co141", "InCtrl", "ExCtrl"))
-# add in type col (to compare internal, external, and treated)
-tp_all$type <- ifelse(tp_all$treatment == "InCtrl", "internal",
-                    ifelse(tp_all$treatment == "ExCtrl", "external","treated"))
-tp_all$type <- factor(tp_all$type, levels = c("internal","external","treated"))
+# removed outliers "InCtrl-2-r15", "733B-17-r27", "717A-6-r33" 
+tp_all <- read.csv("./tp_all.csv")
 
-#create column designating treatment group
-tp_all$group <- ifelse(tp_all$treatment == "141", "Ensifer-only",
-                       ifelse(tp_all$treatment == "522" , "single",
-                              ifelse(tp_all$treatment == "702", "single",
-                                     ifelse(tp_all$treatment == "717", "single",
-                                            ifelse(tp_all$treatment == "733", "single",
-                                                   ifelse(tp_all$treatment == "InCtrl", "control",
-                                                          ifelse(tp_all$treatment == "ExCtrl", "control", "co-inoculated")))))))
-
+# rearrange treatment levels to make figures look better
+tp_all$treatment <- tp_all$treatment %>% levels(c("InCtrl", "ExCtrl", "522", "717A", "702A", "733B", "141", "522 + 141", "717A + 141", "702A + 141", "733B + 141"))
 
 tp_all_sum <- tp_all %>%
   group_by(type) %>%
@@ -255,10 +240,20 @@ write.csv(emmeans_all, file="./emmeans/emmeans_all.csv")
 ```
 
 
+
+# Stacked plot: shoot mass and total nod
+```{r}
+library(grid)
+grid.newpage()
+grid.draw(rbind(ggplotGrob(boxplot.shoot_mass.all), ggplotGrob(boxplot.total_nod.all), size = "last"))
+```
+
+
 # Plot: shoot mass
 ```{r}
 # All treatments and controls
-(boxplot.shoot_mass.all <- ggplot(tp_all , aes(x=treatment, y=shoot_mass)) +
+(boxplot.shoot_mass.all <- ggplot(tp_all %>%
+  mutate(treatment = fct_relevel(treatment, "InCtrl", "ExCtrl", "522", "717A", "702A", "733B", "141", "522 + 141", "717A + 141", "702A + 141", "733B + 141")), aes(x=treatment, y=shoot_mass)) +
   geom_boxplot() +
   xlab("Treatment") +
   ylab("Shoot mass (g)") +
@@ -270,7 +265,7 @@ plot(boxplot.shoot_mass.all)
 save_plot("./figures/boxplot_shoot_mass_all.png", boxplot.shoot_mass.all, base_asp = 3)
 
 # 141 and co-inoculated only
-(boxplot.shoot_mass <- ggplot(tp_all %>% filter(treatment == c("141", "522co141", "702co141", "717co141", "733co141")), aes(x=treatment, y=shoot_mass)) +
+(boxplot.shoot_mass <- ggplot(tp_all %>% filter(treatment == c("141", "522 + 141", "717A + 141", "702A + 141", "733B + 141")), aes(x=treatment, y=shoot_mass)) +
   geom_boxplot() +
   xlab("Treatment") +
   ylab("Shoot mass (g)") +
@@ -285,7 +280,7 @@ save_plot("./figures/boxplot_shoot_mass.png", boxplot.shoot_mass, base_asp = 2)
 # Plot: root mass
 ```{r}
 # All treatments and controls
-(boxplot.root_mass.all <- ggplot(tp_all , aes(x=treatment, y=root_mass)) +
+(boxplot.root_mass.all <- ggplot(tp_all %>% mutate(treatment = fct_relevel(treatment, "InCtrl", "ExCtrl", "522", "717A", "702A", "733B", "141", "522 + 141", "717A + 141", "702A + 141", "733B + 141")), aes(x=treatment, y=root_mass)) +
   geom_boxplot() +
   xlab("Treatment") +
   ylab("Root mass (g)") +
@@ -297,7 +292,7 @@ plot(boxplot.root_mass.all)
 save_plot("./figures/boxplot_root_mass_all.png", boxplot.root_mass.all, base_asp = 3)
 
 # 141 and co-inoculated only
-(boxplot.root_mass <- ggplot(tp_all %>% filter(treatment == c("141", "522co141", "702co141", "717co141", "733co141")), aes(x=treatment, y=root_mass)) +
+(boxplot.root_mass <- ggplot(tp_all %>% filter(treatment == c("141", "522 + 141", "702A + 141", "717A + 141", "733B + 141")), aes(x=treatment, y=root_mass)) +
   geom_boxplot() +
   xlab("Treatment") +
   ylab("Root mass (g)") +
@@ -312,7 +307,7 @@ save_plot("./figures/boxplot_root_mass.png", boxplot.root_mass, base_asp = 2)
 # Plot: ratio
 ```{r}
 # All treatments and controls
-(boxplot.ratio.all <- ggplot(tp_all , aes(x=treatment, y=ratio)) +
+(boxplot.ratio.all <- ggplot(tp_all %>% mutate(treatment = fct_relevel(treatment, "InCtrl", "ExCtrl", "522", "717A", "702A", "733B", "141", "522 + 141", "717A + 141", "702A + 141", "733B + 141")), aes(x=treatment, y=ratio)) +
   geom_boxplot() +
   xlab("Treatment") +
   ylab("Shoot:root mass ratio") +
@@ -324,7 +319,7 @@ plot(boxplot.ratio.all)
 save_plot("./figures/boxplot_ratio_all.png", boxplot.ratio.all, base_asp = 3)
 
 # 141 and co-inoculated only
-(boxplot.ratio <- ggplot(tp_all %>% filter(treatment == c("141", "522co141", "702co141", "717co141", "733co141")), aes(x=treatment, y=ratio)) +
+(boxplot.ratio <- ggplot(tp_all %>% filter(treatment == c("141", "522 + 141", "702A + 141", "717A + 141", "733B + 141")), aes(x=treatment, y=ratio)) +
   geom_boxplot() +
   xlab("Treatment") +
   ylab("Shoot:root mass ratio") +
@@ -339,7 +334,7 @@ save_plot("./figures/boxplot_ratio.png", boxplot.ratio, base_asp = 2)
 # Plot: leaf number
 ```{r}
 # All treatments and controls
-(boxplot.leaf.all <- ggplot(tp_all, aes(x=treatment, y=leaf4)) +
+(boxplot.leaf.all <- ggplot(tp_all %>% mutate(treatment = fct_relevel(treatment, "InCtrl", "ExCtrl", "522", "717A", "702A", "733B", "141", "522 + 141", "717A + 141", "702A + 141", "733B + 141")), aes(x=treatment, y=leaf4)) +
   geom_boxplot() +
   xlab("Treatment") +
   ylab("Leaf count") +
@@ -351,7 +346,7 @@ plot(boxplot.leaf.all)
 save_plot("./figures/boxplot_leaf_all.png", boxplot.leaf.all, base_asp = 3)
 
 # 141 and co-inoculated only
-(boxplot.leaf <- ggplot(tp_all %>% filter(treatment == c("141", "522co141", "702co141", "717co141", "733co141")), aes(x=treatment, y=leaf4)) +
+(boxplot.leaf <- ggplot(tp_all %>% filter(treatment == c("141", "522 + 141", "702A + 141", "717A + 141", "733B + 141")), aes(x=treatment, y=leaf4)) +
   geom_boxplot() +
   xlab("Treatment") +
   ylab("Leaf count") +
@@ -367,7 +362,7 @@ save_plot("./figures/boxplot_leaf.png", boxplot.leaf, base_asp = 2)
 # Plot: height
 ```{r}
 # All treatments and controls
-(boxplot.height4.all <- ggplot(tp_all , aes(x=treatment, y=height4)) +
+(boxplot.height4.all <- ggplot(tp_all %>% mutate(treatment = fct_relevel(treatment, "InCtrl", "ExCtrl", "522", "717A", "702A", "733B", "141", "522 + 141", "717A + 141", "702A + 141", "733B + 141")), aes(x=treatment, y=height4)) +
   geom_boxplot() +
   xlab("Treatment") +
   ylab("Shoot height (cm)") +
@@ -379,7 +374,7 @@ plot(boxplot.height4.all)
 save_plot("./figures/boxplot_height4_all.png", boxplot.height4.all, base_asp = 3)
 
 # 141 and co-inoculated only
-(boxplot.height4 <- ggplot(tp_all %>% filter(treatment == c("141", "522co141", "702co141", "717co141", "733co141")), aes(x=treatment, y=height4)) +
+(boxplot.height4 <- ggplot(tp_all %>% filter(treatment == c("141", "522 + 141", "702A + 141", "717A + 141", "733B + 141")), aes(x=treatment, y=height4)) +
   geom_boxplot() +
   xlab("Treatment") +
   ylab("Shoot height (cm)") +
@@ -394,7 +389,7 @@ save_plot("./figures/boxplot_height4.png", boxplot.height4, base_asp = 2)
 # Plot: chloro
 ```{r}
 # All treatments and controls
-(boxplot.chloro4.all <- ggplot(tp_all , aes(x=treatment, y=chloro4)) +
+(boxplot.chloro4.all <- ggplot(tp_all %>% mutate(treatment = fct_relevel(treatment, "InCtrl", "ExCtrl", "522", "717A", "702A", "733B", "141", "522 + 141", "717A + 141", "702A + 141", "733B + 141")), aes(x=treatment, y=chloro4)) +
   geom_boxplot() +
   xlab("Treatment") +
   ylab("Chlorophyll content (SPAD)") +
@@ -406,7 +401,7 @@ plot(boxplot.chloro4.all)
 save_plot("./figures/boxplot_chloro4_all.png", boxplot.chloro4.all, base_asp = 3)
 
 # 141 and co-inoculated only
-(boxplot.chloro4 <- ggplot(tp_all %>% filter(treatment == c("141", "522co141", "702co141", "717co141", "733co141")), aes(x=treatment, y=chloro4)) +
+(boxplot.chloro4 <- ggplot(tp_all %>% filter(treatment == c("141", "522 + 141", "702A + 141", "717A + 141", "733B + 141")), aes(x=treatment, y=chloro4)) +
   geom_boxplot() +
   xlab("Treatment") +
   ylab("Chlorophyll content (SPAD)") +
@@ -421,7 +416,7 @@ save_plot("./figures/boxplot_chloro4.png", boxplot.chloro4, base_asp = 2)
 # Plot: nodule count
 ```{r}
 # boxplot, all treatments and controls
-(boxplot.total_nod.all <- ggplot(tp_all, aes(x=treatment, y=total_nod)) +
+(boxplot.total_nod.all <- ggplot(tp_all %>% mutate(treatment = fct_relevel(treatment, "InCtrl", "ExCtrl", "522", "717A", "702A", "733B", "141", "522 + 141", "717A + 141", "702A + 141", "733B + 141")), aes(x=treatment, y=total_nod)) +
   geom_boxplot() +
   xlab("Treatment") +
   ylab("Nodule count") +
@@ -433,7 +428,7 @@ plot(boxplot.total_nod.all)
 save_plot("./figures/boxplot_nodule_count_all.png", boxplot.total_nod.all, base_asp = 3)
 
 # boxplot, 141 and co-inoculated treatments only
-(boxplot.total_nod <- ggplot(tp_all %>% filter(treatment == c("141", "522co141", "702co141", "717co141", "733co141")), aes(x=treatment, y=total_nod)) +
+(boxplot.total_nod <- ggplot(tp_all %>% filter(treatment == c("141", "522 + 141", "702A + 141", "717A + 141", "733B + 141")), aes(x=treatment, y=total_nod)) +
   geom_boxplot() +
   xlab("Treatment") +
   ylab("Nodule count") +
@@ -448,7 +443,7 @@ save_plot("./figures/boxplot_nodule_count.png", boxplot.total_nod, base_asp = 2)
 # Plot: nodule mass
 ```{r}
 # boxplot, all treatments and controls
-(boxplot.nod_mass.all <- ggplot(tp_all, aes(x=treatment, y=(nod_mass)*1000)) +
+(boxplot.nod_mass.all <- ggplot(tp_all %>% mutate(treatment = fct_relevel(treatment, "InCtrl", "ExCtrl", "522", "717A", "702A", "733B", "141", "522 + 141", "717A + 141", "702A + 141", "733B + 141")), aes(x=treatment, y=(nod_mass)*1000)) +
   geom_boxplot() +
   xlab("Treatment") +
   ylab("Average nodule mass (mg)") +
@@ -456,11 +451,11 @@ save_plot("./figures/boxplot_nodule_count.png", boxplot.total_nod, base_asp = 2)
   theme_minimal_hgrid() +
   theme(plot.title = element_text(hjust = 0.5), legend.position = "none")
   )
-plot(boxplot.nodule_mass.all)
+plot(boxplot.nod_mass.all)
 save_plot("./figures/boxplot_nod_mass_all.png", boxplot.nod_mass.all, base_asp = 3)
 
 # boxplot, 141 and co-inoculated treatments only
-(boxplot.nod_mass <- ggplot(tp_all %>% filter(treatment == c("141", "522co141", "702co141", "717co141", "733co141")), aes(x=treatment, y=(nod_mass)*1000)) +
+(boxplot.nod_mass <- ggplot(tp_all %>% filter(treatment == c("141", "522 + 141", "702A + 141", "717A + 141", "733B + 141")), aes(x=treatment, y=(nod_mass)*1000)) +
   geom_boxplot() +
   xlab("Treatment") +
   ylab("Average nodule mass (mg)") +
