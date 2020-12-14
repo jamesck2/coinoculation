@@ -239,6 +239,88 @@ emmeans_all$significance <- ifelse(emmeans_all$p.value <= 0.05 & emmeans_all$p.v
 write.csv(emmeans_all, file="./emmeans/emmeans_all.csv")
 ```
 
+# Build linear mixed models in case 522 and 522 + 141 data should be removed
+```{r}
+tp_no522 <- tp_all
+tp_no522 <- tp_no522 %>% filter(treatment != c("522")) %>% droplevels()
+tp_no522 <- tp_no522 %>% filter(treatment != c("522 + 141")) %>% droplevels()
+
+# Shoot mass -522
+lmm.all.shoot_mass.no522 <- lmer(shoot_mass ~ treatment + (1|rack), data = tp_no522)
+summary(lmm.all.shoot_mass.no522)
+(anova_lmm.all.shoot_mass.no522 <- Anova(lmm.all.shoot_mass.no522, type = 2))
+lmm.all.shoot_mass.no522.emms <- emmeans(lmm.all.shoot_mass.no522, pairwise ~ treatment)
+lmm.all.shoot_mass.no522.emms.sum <- summary(lmm.all.shoot_mass.no522.emms, infer = c(TRUE,TRUE), adjust = "fdr")
+write.csv(lmm.all.shoot_mass.no522.emms.sum$contrasts, file= "./emmeans/emmeans_shoot_mass_no522.csv")
+plot(lmm.all.shoot_mass.no522)
+# Significance remains the same
+
+# Nodule count -522
+lmm.all.total_nod.no522 <- lmer(total_nod ~ treatment + (1|rack), data = tp_no522)
+summary(lmm.all.total_nod.no522)
+(anova_lmm.all.total_nod.no522 <- Anova(lmm.all.total_nod.no522, type = 2))
+lmm.all.total_nod.no522.emms <- emmeans(lmm.all.total_nod.no522, pairwise ~ treatment)
+lmm.all.total_nod.no522.emms.sum <- summary(lmm.all.total_nod.no522.emms, infer = c(TRUE,TRUE), adjust = "fdr")
+write.csv(lmm.all.total_nod.no522.emms.sum$contrasts, file= "./emmeans/emmeans_total_nod_no522.csv")
+plot(lmm.all.total_nod.no522)
+# Significance remains the same
+
+```
+
+# Build linear mixed models in case ExCtrl data should be removed
+```{r}
+tp_noEx <- tp_all
+tp_noEx <- tp_noEx %>% filter(treatment != c("ExCtrl")) %>% droplevels()
+
+# Shoot mass -ExCtrl
+lmm.all.shoot_mass.noEx <- lmer(shoot_mass ~ treatment + (1|rack), data = tp_noEx)
+summary(lmm.all.shoot_mass.noEx)
+(anova_lmm.all.shoot_mass.noEx <- Anova(lmm.all.shoot_mass.noEx, type = 2))
+lmm.all.shoot_mass.noEx.emms <- emmeans(lmm.all.shoot_mass.noEx, pairwise ~ treatment)
+lmm.all.shoot_mass.noEx.emms.sum <- summary(lmm.all.shoot_mass.noEx.emms, infer = c(TRUE,TRUE), adjust = "fdr")
+write.csv(lmm.all.shoot_mass.noEx.emms.sum$contrasts, file= "./emmeans/emmeans_shoot_mass_noEx.csv")
+plot(lmm.all.shoot_mass.noEx)
+# Significance remains the same
+
+# Nodule count -ExCtrl
+lmm.all.total_nod.noEx <- lmer(total_nod ~ treatment + (1|rack), data = tp_noEx)
+summary(lmm.all.total_nod.noEx)
+(anova_lmm.all.total_nod.noEx <- Anova(lmm.all.total_nod.noEx, type = 2))
+lmm.all.total_nod.noEx.emms <- emmeans(lmm.all.total_nod.noEx, pairwise ~ treatment)
+lmm.all.total_nod.noEx.emms.sum <- summary(lmm.all.total_nod.noEx.emms, infer = c(TRUE,TRUE), adjust = "fdr")
+write.csv(lmm.all.total_nod.noEx.emms.sum$contrasts, file= "./emmeans/emmeans_total_nod_noEx.csv")
+plot(lmm.all.total_nod.noEx)
+# Significance remains the same
+
+```
+
+# Build linear mixed models in case both 522 and ExCtrl data should be removed
+```{r}
+tp_no522Ex <- tp_all
+tp_no522Ex <- tp_no522Ex %>% filter(treatment != c("522")) %>% droplevels()
+tp_no522Ex <- tp_no522Ex %>% filter(treatment != c("522 + 141")) %>% droplevels()
+tp_no522Ex <- tp_no522Ex %>% filter(treatment != c("ExCtrl")) %>% droplevels()
+
+# Shoot mass -522
+lmm.all.shoot_mass.no522Ex <- lmer(shoot_mass ~ treatment + (1|rack), data = tp_no522Ex)
+summary(lmm.all.shoot_mass.no522Ex)
+(anova_lmm.all.shoot_mass.no522Ex <- Anova(lmm.all.shoot_mass.no522Ex, type = 2))
+lmm.all.shoot_mass.no522Ex.emms <- emmeans(lmm.all.shoot_mass.no522Ex, pairwise ~ treatment)
+lmm.all.shoot_mass.no522Ex.emms.sum <- summary(lmm.all.shoot_mass.no522Ex.emms, infer = c(TRUE,TRUE), adjust = "fdr")
+write.csv(lmm.all.shoot_mass.no522Ex.emms.sum$contrasts, file= "./emmeans/emmeans_shoot_mass_no522Ex.csv")
+plot(lmm.all.shoot_mass.no522Ex)
+# Significance remains the same
+
+# Nodule count -522
+lmm.all.total_nod.no522Ex <- lmer(total_nod ~ treatment + (1|rack), data = tp_no522Ex)
+summary(lmm.all.total_nod.no522Ex)
+(anova_lmm.all.total_nod.no522Ex <- Anova(lmm.all.total_nod.no522Ex, type = 2))
+lmm.all.total_nod.no522Ex.emms <- emmeans(lmm.all.total_nod.no522Ex, pairwise ~ treatment)
+lmm.all.total_nod.no522Ex.emms.sum <- summary(lmm.all.total_nod.no522Ex.emms, infer = c(TRUE,TRUE), adjust = "fdr")
+write.csv(lmm.all.total_nod.no522Ex.emms.sum$contrasts, file= "./emmeans/emmeans_total_nod_no522Ex.csv")
+plot(lmm.all.total_nod.no522Ex)
+# Significance remains the same
+```
 
 
 # Stacked plot: shoot mass and total nod
