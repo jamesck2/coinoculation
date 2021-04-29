@@ -36,7 +36,7 @@ tp_raw <- read_csv("all_data.csv")
 tp_all <- read.csv("./tp_all.csv")
 
 # rearrange treatment levels to make figures look better
-tp_all$treatment <- tp_all$treatment %>% levels(c("InCtrl", "ExCtrl", "522", "717A", "702A", "733B", "141", "522 + 141", "717A + 141", "702A + 141", "733B + 141"))
+tp_all$treatment <- tp_all$treatment %>% levels(c("InCtrl", "ExCtrl", "522", "702A", "717A", "733B", "141", "522 + 141", "702A + 141", "717A + 141", "733B + 141"))
 
 tp_all_sum <- tp_all %>%
   group_by(type) %>%
@@ -87,37 +87,37 @@ tp_all_sum <- tp_all %>%
             
             # nodule dissection data
             # mean nodule mass per tube
-            mean_nod_mass = mean(nod_mass, na.rm = TRUE),
-            sd_nod_mass = sd(nod_mass, na.rm = TRUE),
+            mean_nod_mass = mean(nod_mass, na.rm = TRUE), sd_nod_mass = sd(nod_mass, na.rm = TRUE),
             SE_nod_mass = sd_nod_mass/sqrt(count),
             # total nodules per tube
-            mean_total_nod = mean(total_nod, na.rm = TRUE),
-            sd_total_nod = sd(total_nod, na.rm = TRUE),
+            mean_total_nod = mean(total_nod, na.rm = TRUE), sd_total_nod = sd(total_nod, na.rm = TRUE),
             SE_total_nod = sd_total_nod/sqrt(count),
             
             # biomass
             # mean shoot biomass (mg)
-            mean_shoot_mass = mean(shoot_mass, na.rm = TRUE),
-            sd_shoot_mass = sd(shoot_mass, na.rm = TRUE),
+            mean_shoot_mass = mean(shoot_mass, na.rm = TRUE), sd_shoot_mass = sd(shoot_mass, na.rm = TRUE),
             SE_shoot_mass = sd_shoot_mass/sqrt(count),
             # mean root biomass (mg)
-            mean_root_mass = mean(root_mass, na.rm = TRUE),
-            sd_root_mass = sd(root_mass, na.rm = TRUE),
+            mean_root_mass = mean(root_mass, na.rm = TRUE), sd_root_mass = sd(root_mass, na.rm = TRUE),
             SE_root_mass = sd_root_mass/sqrt(count),
-            # ratio
-            mean_ratio = mean(ratio, na.rm = TRUE),
-            sd_ratio = sd(ratio, na.rm = TRUE),
-            SE_ratio = sd_ratio/sqrt(count))
+           
+            # shoot_mass:root_mass ratio
+            mean_shoot_mass.root_mass = mean(shoot_mass.root_mass, na.rm = TRUE), sd_shoot_mass.root_mass = sd(shoot_mass.root_mass, na.rm = TRUE),
+            SE_shoot_mass.root_mass = sd_shoot_mass.root_mass/sqrt(count),
+            # nod_mass:root_mass ratio
+            mean_nod_mass.root_mass = mean(nod_mass.root_mass, na.rm = TRUE), sd_nod_mass.root_mass = sd(nod_mass.root_mass, na.rm = TRUE),
+            SE_nod_mass.root_mass = sd_nod_mass.root_mass/sqrt(count)
             # when adding more data, make sure to delete one of the ')' above in (count)) and add a comma
+           )
 
-tp_all_long <- gather(tp_all, key = "trait", value = "measurement", height1:ratio)# use gather to stack the trait columns
+tp_all_long <- gather(tp_all, key = "trait", value = "measurement", height1:nod_mass.root_mass)# use gather to stack the trait columns
 
 tp_long_sum <- tp_all_long %>%
   group_by(type, trait) %>%
   summarize(count = n(),
             mean_trait = mean(measurement, na.rm = TRUE), sd_trait = sd(measurement, na.rm = TRUE),
             SE_trait = sd_trait/sqrt(count))
-tp_long_sum$trait <- factor(tp_long_sum$trait, level = c("height1", "height2", "height3", "height4", "leaf1", "leaf2", "leaf3", "leaf4", "chloro1", "chloro2", "chloro3", "chloro4", "shoot_mass", "root_mass", "ratio", "nod_mass", "total_nod"))
+tp_long_sum$trait <- factor(tp_long_sum$trait, level = c("height1", "height2", "height3", "height4", "leaf1", "leaf2", "leaf3", "leaf4", "chloro1", "chloro2", "chloro3", "chloro4", "shoot_mass", "root_mass", "shoot_mass.root_mass", "nod_mass", "nod_mass.root_mass", "total_nod"))
 
 # this includes controls
 tp_long_sum_controlsplus <- tp_all_long %>%
@@ -130,8 +130,8 @@ tp_treated <- tp_all %>% # for ANOVA
   filter(type == "treated") %>%
   droplevels(.)
 
-tp_treated_long <- gather(tp_treated, key = "trait", value = "measurement", height1:ratio)
-tp_treated_long$trait <- factor(tp_treated_long$trait, level = c("height1", "height2", "height3", "height4", "leaf1", "leaf2", "leaf3", "leaf4", "chloro1", "chloro2", "chloro3", "chloro4", "shoot_mass", "root_mass", "ratio", "nod_mass", "total_nod"))
+tp_treated_long <- gather(tp_treated, key = "trait", value = "measurement", height1:nod_mass.root_mass)
+tp_treated_long$trait <- factor(tp_treated_long$trait, level = c("height1", "height2", "height3", "height4", "leaf1", "leaf2", "leaf3", "leaf4", "chloro1", "chloro2", "chloro3", "chloro4", "shoot_mass", "root_mass", "shoot_mass.root_mass", "nod_mass", "nod_mass.root_mass", "total_nod"))
 
 tp_treated_long_sum <- tp_treated_long %>%
   group_by(treatment, trait) %>%
@@ -182,13 +182,21 @@ lmm.all.root_mass.emms.sum <- summary(lmm.all.root_mass.emms, infer = c(TRUE,TRU
 write.csv(lmm.all.root_mass.emms.sum$contrasts, file= "./emmeans/emmeans_root_mass.csv")
 plot(lmm.all.root_mass)
 
-lmm.all.ratio <- lmer(ratio ~ treatment + (1|rack), data = tp_all)
-summary(lmm.all.ratio)
-(anova_lmm.all.ratio <- Anova(lmm.all.ratio, type = 2))
-lmm.all.ratio.emms <- emmeans(lmm.all.ratio, pairwise ~ treatment)
-lmm.all.ratio.emms.sum <- summary(lmm.all.ratio.emms, infer = c(TRUE,TRUE), adjust = "fdr")
-write.csv(lmm.all.ratio.emms.sum$contrasts, file= "./emmeans/emmeans_ratio.csv")
-plot(lmm.all.ratio)
+lmm.all.shoot_mass.root_mass <- lmer(shoot_mass.root_mass ~ treatment + (1|rack), data = tp_all)
+summary(lmm.all.shoot_mass.root_mass)
+(anova_lmm.all.shoot_mass.root_mass <- Anova(lmm.all.shoot_mass.root_mass, type = 2))
+lmm.all.shoot_mass.root_mass.emms <- emmeans(lmm.all.shoot_mass.root_mass, pairwise ~ treatment)
+lmm.all.shoot_mass.root_mass.emms.sum <- summary(lmm.all.shoot_mass.root_mass.emms, infer = c(TRUE,TRUE), adjust = "fdr")
+write.csv(lmm.all.shoot_mass.root_mass.emms.sum$contrasts, file= "./emmeans/emmeans_shoot_mass.root_mass.csv")
+plot(lmm.all.shoot_mass.root_mass)
+
+lmm.all.nod_mass.root_mass <- lmer(nod_mass.root_mass ~ treatment + (1|rack), data = tp_all)
+summary(lmm.all.nod_mass.root_mass)
+(anova_lmm.all.nod_mass.root_mass <- Anova(lmm.all.nod_mass.root_mass, type = 2))
+lmm.all.nod_mass.root_mass.emms <- emmeans(lmm.all.nod_mass.root_mass, pairwise ~ treatment)
+lmm.all.nod_mass.root_mass.emms.sum <- summary(lmm.all.nod_mass.root_mass.emms, infer = c(TRUE,TRUE), adjust = "fdr")
+write.csv(lmm.all.nod_mass.root_mass.emms.sum$contrasts, file= "./emmeans/emmeans_nod_mass.root_mass.csv")
+plot(lmm.all.nod_mass.root_mass)
 
 lmm.all.chloro4 <- lmer(chloro4 ~ treatment + (1|rack), data = tp_all)
 summary(lmm.all.chloro4)
@@ -239,94 +247,11 @@ emmeans_all$significance <- ifelse(emmeans_all$p.value <= 0.05 & emmeans_all$p.v
 write.csv(emmeans_all, file="./emmeans/emmeans_all.csv")
 ```
 
-# Build linear mixed models in case 522 and 522 + 141 data should be removed
-```{r}
-tp_no522 <- tp_all
-tp_no522 <- tp_no522 %>% filter(treatment != c("522")) %>% droplevels()
-tp_no522 <- tp_no522 %>% filter(treatment != c("522 + 141")) %>% droplevels()
-
-# Shoot mass -522
-lmm.all.shoot_mass.no522 <- lmer(shoot_mass ~ treatment + (1|rack), data = tp_no522)
-summary(lmm.all.shoot_mass.no522)
-(anova_lmm.all.shoot_mass.no522 <- Anova(lmm.all.shoot_mass.no522, type = 2))
-lmm.all.shoot_mass.no522.emms <- emmeans(lmm.all.shoot_mass.no522, pairwise ~ treatment)
-lmm.all.shoot_mass.no522.emms.sum <- summary(lmm.all.shoot_mass.no522.emms, infer = c(TRUE,TRUE), adjust = "fdr")
-write.csv(lmm.all.shoot_mass.no522.emms.sum$contrasts, file= "./emmeans/emmeans_shoot_mass_no522.csv")
-plot(lmm.all.shoot_mass.no522)
-# Significance remains the same
-
-# Nodule count -522
-lmm.all.total_nod.no522 <- lmer(total_nod ~ treatment + (1|rack), data = tp_no522)
-summary(lmm.all.total_nod.no522)
-(anova_lmm.all.total_nod.no522 <- Anova(lmm.all.total_nod.no522, type = 2))
-lmm.all.total_nod.no522.emms <- emmeans(lmm.all.total_nod.no522, pairwise ~ treatment)
-lmm.all.total_nod.no522.emms.sum <- summary(lmm.all.total_nod.no522.emms, infer = c(TRUE,TRUE), adjust = "fdr")
-write.csv(lmm.all.total_nod.no522.emms.sum$contrasts, file= "./emmeans/emmeans_total_nod_no522.csv")
-plot(lmm.all.total_nod.no522)
-# Significance remains the same
-
-```
-
-# Build linear mixed models in case ExCtrl data should be removed
-```{r}
-tp_noEx <- tp_all
-tp_noEx <- tp_noEx %>% filter(treatment != c("ExCtrl")) %>% droplevels()
-
-# Shoot mass -ExCtrl
-lmm.all.shoot_mass.noEx <- lmer(shoot_mass ~ treatment + (1|rack), data = tp_noEx)
-summary(lmm.all.shoot_mass.noEx)
-(anova_lmm.all.shoot_mass.noEx <- Anova(lmm.all.shoot_mass.noEx, type = 2))
-lmm.all.shoot_mass.noEx.emms <- emmeans(lmm.all.shoot_mass.noEx, pairwise ~ treatment)
-lmm.all.shoot_mass.noEx.emms.sum <- summary(lmm.all.shoot_mass.noEx.emms, infer = c(TRUE,TRUE), adjust = "fdr")
-write.csv(lmm.all.shoot_mass.noEx.emms.sum$contrasts, file= "./emmeans/emmeans_shoot_mass_noEx.csv")
-plot(lmm.all.shoot_mass.noEx)
-# Significance remains the same
-
-# Nodule count -ExCtrl
-lmm.all.total_nod.noEx <- lmer(total_nod ~ treatment + (1|rack), data = tp_noEx)
-summary(lmm.all.total_nod.noEx)
-(anova_lmm.all.total_nod.noEx <- Anova(lmm.all.total_nod.noEx, type = 2))
-lmm.all.total_nod.noEx.emms <- emmeans(lmm.all.total_nod.noEx, pairwise ~ treatment)
-lmm.all.total_nod.noEx.emms.sum <- summary(lmm.all.total_nod.noEx.emms, infer = c(TRUE,TRUE), adjust = "fdr")
-write.csv(lmm.all.total_nod.noEx.emms.sum$contrasts, file= "./emmeans/emmeans_total_nod_noEx.csv")
-plot(lmm.all.total_nod.noEx)
-# Significance remains the same
-
-```
-
-# Build linear mixed models in case both 522 and ExCtrl data should be removed
-```{r}
-tp_no522Ex <- tp_all
-tp_no522Ex <- tp_no522Ex %>% filter(treatment != c("522")) %>% droplevels()
-tp_no522Ex <- tp_no522Ex %>% filter(treatment != c("522 + 141")) %>% droplevels()
-tp_no522Ex <- tp_no522Ex %>% filter(treatment != c("ExCtrl")) %>% droplevels()
-
-# Shoot mass -522
-lmm.all.shoot_mass.no522Ex <- lmer(shoot_mass ~ treatment + (1|rack), data = tp_no522Ex)
-summary(lmm.all.shoot_mass.no522Ex)
-(anova_lmm.all.shoot_mass.no522Ex <- Anova(lmm.all.shoot_mass.no522Ex, type = 2))
-lmm.all.shoot_mass.no522Ex.emms <- emmeans(lmm.all.shoot_mass.no522Ex, pairwise ~ treatment)
-lmm.all.shoot_mass.no522Ex.emms.sum <- summary(lmm.all.shoot_mass.no522Ex.emms, infer = c(TRUE,TRUE), adjust = "fdr")
-write.csv(lmm.all.shoot_mass.no522Ex.emms.sum$contrasts, file= "./emmeans/emmeans_shoot_mass_no522Ex.csv")
-plot(lmm.all.shoot_mass.no522Ex)
-# Significance remains the same
-
-# Nodule count -522
-lmm.all.total_nod.no522Ex <- lmer(total_nod ~ treatment + (1|rack), data = tp_no522Ex)
-summary(lmm.all.total_nod.no522Ex)
-(anova_lmm.all.total_nod.no522Ex <- Anova(lmm.all.total_nod.no522Ex, type = 2))
-lmm.all.total_nod.no522Ex.emms <- emmeans(lmm.all.total_nod.no522Ex, pairwise ~ treatment)
-lmm.all.total_nod.no522Ex.emms.sum <- summary(lmm.all.total_nod.no522Ex.emms, infer = c(TRUE,TRUE), adjust = "fdr")
-write.csv(lmm.all.total_nod.no522Ex.emms.sum$contrasts, file= "./emmeans/emmeans_total_nod_no522Ex.csv")
-plot(lmm.all.total_nod.no522Ex)
-# Significance remains the same
-```
-
 
 # Stacked plot: shoot mass and total nod
 ```{r}
 # Create modified individual plots to be stacked
-(stack.shoot_mass.all <- ggplot(tp_all %>% mutate(treatment = fct_relevel(treatment, "InCtrl", "ExCtrl", "522", "717A", "702A", "733B", "141", "522 + 141", "717A + 141", "702A + 141", "733B + 141")), aes(x=treatment, y=shoot_mass)) +
+(stack.shoot_mass.all <- ggplot(tp_all %>% mutate(treatment = fct_relevel(treatment, "InCtrl", "ExCtrl", "522", "717A", "702A", "733B", "141", "522 + 141", "702A + 141", "717A + 141", "733B + 141")), aes(x=treatment, y=shoot_mass)) +
   geom_boxplot() +
   ylab("Shoot mass (g)") +
   theme_minimal_hgrid() +
@@ -335,7 +260,7 @@ plot(lmm.all.total_nod.no522Ex)
   guides(x = "none")
 )
 
-(stack.total_nod.all <- ggplot(tp_all %>% mutate(treatment = fct_relevel(treatment, "InCtrl", "ExCtrl", "522", "717A", "702A", "733B", "141", "522 + 141", "717A + 141", "702A + 141", "733B + 141")), aes(x=treatment, y=total_nod)) +
+(stack.total_nod.all <- ggplot(tp_all %>% mutate(treatment = fct_relevel(treatment, "InCtrl", "ExCtrl", "522", "717A", "702A", "733B", "141", "522 + 141", "702A + 141", "717A + 141", "733B + 141")), aes(x=treatment, y=total_nod)) +
   geom_boxplot() +
   xlab("Inoculum") +
   ylab("Number of nodules") +
@@ -352,7 +277,7 @@ grid.draw(rbind(ggplotGrob(stack.shoot_mass.all), ggplotGrob(stack.total_nod.all
 ```{r}
 # All treatments and controls
 (boxplot.shoot_mass.all <- ggplot(tp_all %>%
-  mutate(treatment = fct_relevel(treatment, "InCtrl", "ExCtrl", "522", "717A", "702A", "733B", "141", "522 + 141", "717A + 141", "702A + 141", "733B + 141")), aes(x=treatment, y=shoot_mass)) +
+  mutate(treatment = fct_relevel(treatment, "InCtrl", "ExCtrl", "522", "702A", "717A", "733B", "141", "522 + 141", "702A + 141", "717A + 141", "733B + 141")), aes(x=treatment, y=shoot_mass)) +
   geom_boxplot() +
   xlab("Inoculum") +
   ylab("Shoot mass (g)") +
@@ -362,24 +287,12 @@ grid.draw(rbind(ggplotGrob(stack.shoot_mass.all), ggplotGrob(stack.total_nod.all
   )
 plot(boxplot.shoot_mass.all)
 save_plot("./figures/boxplot_shoot_mass_all.png", boxplot.shoot_mass.all, base_asp = 3)
-
-# 141 and co-inoculated only
-(boxplot.shoot_mass <- ggplot(tp_all %>% filter(treatment == c("141", "522 + 141", "717A + 141", "702A + 141", "733B + 141")), aes(x=treatment, y=shoot_mass)) +
-  geom_boxplot() +
-  xlab("Inoculum") +
-  ylab("Shoot mass (g)") +
-  #ggtitle("Average nodule count per plant at week 4") +
-  theme_minimal_hgrid() +
-  theme(plot.title = element_text(hjust = 0.5), legend.position = "none")
-  )
-plot(boxplot.shoot_mass)
-save_plot("./figures/boxplot_shoot_mass.png", boxplot.shoot_mass, base_asp = 2)
 ```
 
 # Plot: root mass
 ```{r}
 # All treatments and controls
-(boxplot.root_mass.all <- ggplot(tp_all %>% mutate(treatment = fct_relevel(treatment, "InCtrl", "ExCtrl", "522", "717A", "702A", "733B", "141", "522 + 141", "717A + 141", "702A + 141", "733B + 141")), aes(x=treatment, y=root_mass)) +
+(boxplot.root_mass.all <- ggplot(tp_all %>% mutate(treatment = fct_relevel(treatment, "InCtrl", "ExCtrl", "522", "702A", "717A", "733B", "141", "522 + 141", "702A + 141", "717A + 141", "733B + 141")), aes(x=treatment, y=root_mass)) +
   geom_boxplot() +
   xlab("Inoculum") +
   ylab("Root mass (g)") +
@@ -389,24 +302,12 @@ save_plot("./figures/boxplot_shoot_mass.png", boxplot.shoot_mass, base_asp = 2)
   )
 plot(boxplot.root_mass.all)
 save_plot("./figures/boxplot_root_mass_all.png", boxplot.root_mass.all, base_asp = 3)
-
-# 141 and co-inoculated only
-(boxplot.root_mass <- ggplot(tp_all %>% filter(treatment == c("141", "522 + 141", "702A + 141", "717A + 141", "733B + 141")), aes(x=treatment, y=root_mass)) +
-  geom_boxplot() +
-  xlab("Inoculum") +
-  ylab("Root mass (g)") +
-  #ggtitle("Average nodule count per plant at week 4") +
-  theme_minimal_hgrid() +
-  theme(plot.title = element_text(hjust = 0.5), legend.position = "none")
-  )
-plot(boxplot.root_mass)
-save_plot("./figures/boxplot_root_mass.png", boxplot.root_mass, base_asp = 2)
 ```
 
-# Plot: ratio
+# Plot: shoot_mass.root_mass
 ```{r}
 # All treatments and controls
-(boxplot.ratio.all <- ggplot(tp_all %>% mutate(treatment = fct_relevel(treatment, "InCtrl", "ExCtrl", "522", "717A", "702A", "733B", "141", "522 + 141", "717A + 141", "702A + 141", "733B + 141")), aes(x=treatment, y=ratio)) +
+(boxplot.shoot_mass.root_mass.all <- ggplot(tp_all %>% mutate(treatment = fct_relevel(treatment, "InCtrl", "ExCtrl", "522", "702A", "717A", "733B", "141", "522 + 141", "702A + 141", "717A + 141", "733B + 141")), aes(x=treatment, y=shoot_mass.root_mass)) +
   geom_boxplot() +
   xlab("Inoculum") +
   ylab("Shoot:root mass ratio") +
@@ -414,26 +315,30 @@ save_plot("./figures/boxplot_root_mass.png", boxplot.root_mass, base_asp = 2)
   theme_minimal_hgrid() +
   theme(plot.title = element_text(hjust = 0.5), legend.position = "none")
   )
-plot(boxplot.ratio.all)
-save_plot("./figures/boxplot_ratio_all.png", boxplot.ratio.all, base_asp = 3)
-
-# 141 and co-inoculated only
-(boxplot.ratio <- ggplot(tp_all %>% filter(treatment == c("141", "522 + 141", "702A + 141", "717A + 141", "733B + 141")), aes(x=treatment, y=ratio)) +
-  geom_boxplot() +
-  xlab("Inoculum") +
-  ylab("Shoot:root mass ratio") +
-  #ggtitle("Average nodule count per plant at week 4") +
-  theme_minimal_hgrid() +
-  theme(plot.title = element_text(hjust = 0.5), legend.position = "none")
-  )
-plot(boxplot.ratio)
-save_plot("./figures/boxplot_ratio.png", boxplot.ratio, base_asp = 2)
+plot(boxplot.shoot_mass.root_mass.all)
+save_plot("./figures/boxplot_shoot_mass.root_mass_all.png", boxplot.shoot_mass.root_mass.all, base_asp = 3)
 ```
+
+# Plot: nod_mass.root_mass
+```{r}
+# All treatments and controls
+(boxplot.nod_mass.root_mass.all <- ggplot(tp_all %>% mutate(treatment = fct_relevel(treatment, "InCtrl", "ExCtrl", "522", "702A", "717A", "733B", "141", "522 + 141", "702A + 141", "717A + 141", "733B + 141")), aes(x=treatment, y=nod_mass.root_mass)) +
+  geom_boxplot() +
+  xlab("Inoculum") +
+  ylab("Shoot:root mass ratio") +
+  #ggtitle("Average nodule count per plant at week 4") +
+  theme_minimal_hgrid() +
+  theme(plot.title = element_text(hjust = 0.5), legend.position = "none")
+  )
+plot(boxplot.nod_mass.root_mass.all)
+save_plot("./figures/boxplot_nod_mass.root_mass_all.png", boxplot.nod_mass.root_mass.all, base_asp = 3)
+```
+
 
 # Plot: leaf number
 ```{r}
 # All treatments and controls
-(boxplot.leaf.all <- ggplot(tp_all %>% mutate(treatment = fct_relevel(treatment, "InCtrl", "ExCtrl", "522", "717A", "702A", "733B", "141", "522 + 141", "717A + 141", "702A + 141", "733B + 141")), aes(x=treatment, y=leaf4)) +
+(boxplot.leaf.all <- ggplot(tp_all %>% mutate(treatment = fct_relevel(treatment, "InCtrl", "ExCtrl", "522", "702A", "717A", "733B", "141", "522 + 141", "702A + 141", "717A + 141", "733B + 141")), aes(x=treatment, y=leaf4)) +
   geom_boxplot() +
   xlab("Inoculum") +
   ylab("Leaf count") +
@@ -443,25 +348,13 @@ save_plot("./figures/boxplot_ratio.png", boxplot.ratio, base_asp = 2)
   )
 plot(boxplot.leaf.all)
 save_plot("./figures/boxplot_leaf_all.png", boxplot.leaf.all, base_asp = 3)
-
-# 141 and co-inoculated only
-(boxplot.leaf <- ggplot(tp_all %>% filter(treatment == c("141", "522 + 141", "702A + 141", "717A + 141", "733B + 141")), aes(x=treatment, y=leaf4)) +
-  geom_boxplot() +
-  xlab("Inoculum") +
-  ylab("Leaf count") +
-  #ggtitle("Average nodule count per plant at week 4") +
-  theme_minimal_hgrid() +
-  theme(plot.title = element_text(hjust = 0.5), legend.position = "none")
-  )
-plot(boxplot.leaf)
-save_plot("./figures/boxplot_leaf.png", boxplot.leaf, base_asp = 2)
 ```
 
 
 # Plot: height
 ```{r}
 # All treatments and controls
-(boxplot.height4.all <- ggplot(tp_all %>% mutate(treatment = fct_relevel(treatment, "InCtrl", "ExCtrl", "522", "717A", "702A", "733B", "141", "522 + 141", "717A + 141", "702A + 141", "733B + 141")), aes(x=treatment, y=height4)) +
+(boxplot.height4.all <- ggplot(tp_all %>% mutate(treatment = fct_relevel(treatment, "InCtrl", "ExCtrl", "522", "702A", "717A", "733B", "141", "522 + 141", "702A + 141", "717A + 141", "733B + 141")), aes(x=treatment, y=height4)) +
   geom_boxplot() +
   xlab("Inoculum") +
   ylab("Shoot height (cm)") +
@@ -471,24 +364,12 @@ save_plot("./figures/boxplot_leaf.png", boxplot.leaf, base_asp = 2)
   )
 plot(boxplot.height4.all)
 save_plot("./figures/boxplot_height4_all.png", boxplot.height4.all, base_asp = 3)
-
-# 141 and co-inoculated only
-(boxplot.height4 <- ggplot(tp_all %>% filter(treatment == c("141", "522 + 141", "702A + 141", "717A + 141", "733B + 141")), aes(x=treatment, y=height4)) +
-  geom_boxplot() +
-  xlab("Inoculum") +
-  ylab("Shoot height (cm)") +
-  #ggtitle("Average nodule count per plant at week 4") +
-  theme_minimal_hgrid() +
-  theme(plot.title = element_text(hjust = 0.5), legend.position = "none")
-  )
-plot(boxplot.height4)
-save_plot("./figures/boxplot_height4.png", boxplot.height4, base_asp = 2)
 ```
 
 # Plot: chloro
 ```{r}
 # All treatments and controls
-(boxplot.chloro4.all <- ggplot(tp_all %>% mutate(treatment = fct_relevel(treatment, "InCtrl", "ExCtrl", "522", "717A", "702A", "733B", "141", "522 + 141", "717A + 141", "702A + 141", "733B + 141")), aes(x=treatment, y=chloro4)) +
+(boxplot.chloro4.all <- ggplot(tp_all %>% mutate(treatment = fct_relevel(treatment, "InCtrl", "ExCtrl", "522", "702A", "717A", "733B", "141", "522 + 141", "702A + 141", "717A + 141", "733B + 141")), aes(x=treatment, y=chloro4)) +
   geom_boxplot() +
   xlab("Inoculum") +
   ylab("Chlorophyll content (SPAD)") +
@@ -498,24 +379,12 @@ save_plot("./figures/boxplot_height4.png", boxplot.height4, base_asp = 2)
   )
 plot(boxplot.chloro4.all)
 save_plot("./figures/boxplot_chloro4_all.png", boxplot.chloro4.all, base_asp = 3)
-
-# 141 and co-inoculated only
-(boxplot.chloro4 <- ggplot(tp_all %>% filter(treatment == c("141", "522 + 141", "702A + 141", "717A + 141", "733B + 141")), aes(x=treatment, y=chloro4)) +
-  geom_boxplot() +
-  xlab("Inoculum") +
-  ylab("Chlorophyll content (SPAD)") +
-  #ggtitle("Average nodule count per plant at week 4") +
-  theme_minimal_hgrid() +
-  theme(plot.title = element_text(hjust = 0.5), legend.position = "none")
-  )
-plot(boxplot.chloro4)
-save_plot("./figures/boxplot_chloro4.png", boxplot.chloro4, base_asp = 2)
 ```
 
 # Plot: nodule count
 ```{r}
 # boxplot, all treatments and controls
-(boxplot.total_nod.all <- ggplot(tp_all %>% mutate(treatment = fct_relevel(treatment, "InCtrl", "ExCtrl", "522", "717A", "702A", "733B", "141", "522 + 141", "717A + 141", "702A + 141", "733B + 141")), aes(x=treatment, y=total_nod)) +
+(boxplot.total_nod.all <- ggplot(tp_all %>% mutate(treatment = fct_relevel(treatment, "InCtrl", "ExCtrl", "522", "702A", "717A", "733B", "141", "522 + 141", "702A + 141", "717A + 141", "733B + 141")), aes(x=treatment, y=total_nod)) +
   geom_boxplot() +
   xlab("Inoculum") +
   ylab("Nodule count") +
@@ -525,24 +394,12 @@ save_plot("./figures/boxplot_chloro4.png", boxplot.chloro4, base_asp = 2)
   )
 plot(boxplot.total_nod.all)
 save_plot("./figures/boxplot_nodule_count_all.png", boxplot.total_nod.all, base_asp = 3)
-
-# boxplot, 141 and co-inoculated treatments only
-(boxplot.total_nod <- ggplot(tp_all %>% filter(treatment == c("141", "522 + 141", "702A + 141", "717A + 141", "733B + 141")), aes(x=treatment, y=total_nod)) +
-  geom_boxplot() +
-  xlab("Inoculum") +
-  ylab("Nodule count") +
-  #ggtitle("Average nodule count per plant at week 4") +
-  theme_minimal_hgrid() +
-  theme(plot.title = element_text(hjust = 0.5), legend.position = "none")
-  )
-plot(boxplot.total_nod.nErm)
-save_plot("./figures/boxplot_nodule_count.png", boxplot.total_nod, base_asp = 2)
 ```
 
 # Plot: nodule mass
 ```{r}
 # boxplot, all treatments and controls
-(boxplot.nod_mass.all <- ggplot(tp_all %>% mutate(treatment = fct_relevel(treatment, "InCtrl", "ExCtrl", "522", "717A", "702A", "733B", "141", "522 + 141", "717A + 141", "702A + 141", "733B + 141")), aes(x=treatment, y=(nod_mass)*1000)) +
+(boxplot.nod_mass.all <- ggplot(tp_all %>% mutate(treatment = fct_relevel(treatment, "InCtrl", "ExCtrl", "522", "702A", "717A", "733B", "141", "522 + 141", "702A + 141", "717A + 141", "733B + 141")), aes(x=treatment, y=(nod_mass)*1000)) +
   geom_boxplot() +
   xlab("Inoculum") +
   ylab("Average nodule mass (mg)") +
@@ -552,17 +409,5 @@ save_plot("./figures/boxplot_nodule_count.png", boxplot.total_nod, base_asp = 2)
   )
 plot(boxplot.nod_mass.all)
 save_plot("./figures/boxplot_nod_mass_all.png", boxplot.nod_mass.all, base_asp = 3)
-
-# boxplot, 141 and co-inoculated treatments only
-(boxplot.nod_mass <- ggplot(tp_all %>% filter(treatment == c("141", "522 + 141", "702A + 141", "717A + 141", "733B + 141")), aes(x=treatment, y=(nod_mass)*1000)) +
-  geom_boxplot() +
-  xlab("Inoculum") +
-  ylab("Average nodule mass (mg)") +
-  #ggtitle("Average nodule count per plant at week 4") +
-  theme_minimal_hgrid() +
-  theme(plot.title = element_text(hjust = 0.5), legend.position = "none")
-  )
-plot(boxplot.nod_mass)
-save_plot("./figures/boxplot_nod_mass.png", boxplot.nod_mass, base_asp = 2)
 ```
 
